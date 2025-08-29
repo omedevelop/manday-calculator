@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { teamMemberSchema } from '@/lib/validations'
 
+export const runtime = 'edge'
+
 export async function GET() {
   try {
     const teamMembers = await prisma.teamMember.findMany({
