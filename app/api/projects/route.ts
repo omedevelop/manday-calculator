@@ -1,30 +1,12 @@
 export const revalidate = 60
 import { NextRequest, NextResponse } from 'next/server'
-// import { prisma } from '@/lib/db' // TODO: Migrate to Supabase
 import { projectSchema } from '@/lib/validations'
 import { calculateTotals } from '@/lib/calculations'
+import { getProjects, createProject, upsertProjectSummary } from '@/lib/database'
 
 export async function GET() {
-  // TODO: Migrate projects to Supabase
-  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
-  
-  /*
   try {
-    const projects = await prisma.project.findMany({
-      include: {
-        people: {
-          include: {
-            teamMember: true,
-            role: true,
-          },
-        },
-        holidays: true,
-        summary: true,
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-    })
+    const projects = await getProjects()
 
     const res = NextResponse.json(projects)
     res.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
@@ -39,10 +21,6 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  // TODO: Migrate projects to Supabase
-  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
-  
-  /*
   try {
     const body = await request.json()
     
@@ -50,36 +28,30 @@ export async function POST(request: NextRequest) {
     const validatedData = projectSchema.parse(body)
     
     // Create project
-    const project = await prisma.project.create({
-      data: {
-        name: validatedData.name,
-        client: validatedData.client,
-        currencyCode: validatedData.currencyCode,
-        currencySymbol: validatedData.currencySymbol,
-        hoursPerDay: validatedData.hoursPerDay,
-        taxEnabled: validatedData.taxEnabled,
-        taxPercent: validatedData.taxPercent,
-        pricingMode: validatedData.pricingMode,
-        proposedPrice: validatedData.proposedPrice,
-        targetRoiPercent: validatedData.targetRoiPercent,
-        targetMarginPercent: validatedData.targetMarginPercent,
-        fxNote: validatedData.fxNote,
-        executionDays: validatedData.executionDays,
-        bufferDays: validatedData.bufferDays,
-        finalDays: validatedData.finalDays,
-        calendarMode: validatedData.calendarMode,
-        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
-        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
-        workingWeek: validatedData.workingWeek,
-      },
-      include: {
-        people: true,
-        holidays: true,
-      },
+    const project = await createProject({
+      name: validatedData.name,
+      client: validatedData.client,
+      currencyCode: validatedData.currencyCode,
+      currencySymbol: validatedData.currencySymbol,
+      hoursPerDay: validatedData.hoursPerDay,
+      taxEnabled: validatedData.taxEnabled,
+      taxPercent: validatedData.taxPercent,
+      pricingMode: validatedData.pricingMode,
+      proposedPrice: validatedData.proposedPrice,
+      targetRoiPercent: validatedData.targetRoiPercent,
+      targetMarginPercent: validatedData.targetMarginPercent,
+      fxNote: validatedData.fxNote,
+      executionDays: validatedData.executionDays,
+      bufferDays: validatedData.bufferDays,
+      finalDays: validatedData.finalDays,
+      calendarMode: validatedData.calendarMode,
+      startDate: validatedData.startDate ? validatedData.startDate : null,
+      endDate: validatedData.endDate ? validatedData.endDate : null,
+      workingWeek: validatedData.workingWeek,
     })
 
     // Calculate initial summary if people exist
-    if (project.people.length > 0) {
+    if (project.people && project.people.length > 0) {
       const calculationInput = {
         rows: project.people.map((person: any) => ({
           pricePerDay: Number(person.pricePerDay),
@@ -89,9 +61,9 @@ export async function POST(request: NextRequest) {
           weekendMultiplier: person.weekendMultiplier ? Number(person.weekendMultiplier) : null,
           holidayMultiplier: person.holidayMultiplier ? Number(person.holidayMultiplier) : null,
         })),
-        taxEnabled: project.taxEnabled,
+        taxEnabled: project.taxEnabled ?? false,
         taxPercent: Number(project.taxPercent ?? 0),
-        pricingMode: project.pricingMode,
+        pricingMode: project.pricingMode ?? 'DIRECT',
         proposed: project.proposedPrice ? Number(project.proposedPrice) : null,
         targetROI: project.targetRoiPercent ? Number(project.targetRoiPercent) : null,
         targetMargin: project.targetMarginPercent ? Number(project.targetMarginPercent) : null,
@@ -99,17 +71,15 @@ export async function POST(request: NextRequest) {
 
       const totals = calculateTotals(calculationInput)
 
-      await prisma.projectSummary.create({
-        data: {
-          projectId: project.id,
-          subtotal: totals.subtotal,
-          tax: totals.tax,
-          cost: totals.cost,
-          proposedPrice: totals.proposed,
-          roiPercent: totals.roiPercent,
-          marginPercent: totals.marginPercent,
-          currencyCode: project.currencyCode,
-        },
+      await upsertProjectSummary({
+        projectId: project.id,
+        subtotal: totals.subtotal,
+        tax: totals.tax,
+        cost: totals.cost,
+        proposedPrice: totals.proposed,
+        roiPercent: totals.roiPercent,
+        marginPercent: totals.marginPercent,
+        currencyCode: project.currencyCode ?? 'THB',
       })
     }
 
@@ -128,5 +98,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-  */
 }

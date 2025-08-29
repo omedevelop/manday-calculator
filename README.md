@@ -191,11 +191,12 @@ The seed script creates:
 ## API Endpoints
 
 ### Projects
-- `GET /api/projects` - List all projects
-- `POST /api/projects` - Create new project
-- `GET /api/projects/[id]` - Get project details
-- `PATCH /api/projects/[id]` - Update project
-- `GET /api/projects/[id]/summary` - Calculate project totals
+- `GET /api/projects` - List all projects with relations
+- `POST /api/projects` - Create new project with validation
+- `GET /api/projects/[id]` - Get individual project details
+- `PATCH /api/projects/[id]` - Update existing project
+- `DELETE /api/projects/[id]` - Delete project
+- `GET /api/projects/[id]/summary` - Calculate and update project totals
 
 ### Rate Card
 - `GET /api/rate-card` - Get rate card configuration
@@ -366,6 +367,6 @@ Future enhancements:
 This application has been fully migrated from Prisma to Pure Supabase:
 - ✅ **Team Library**: Fully functional with real-time updates
 - ✅ **Rate Card Management**: Complete CRUD operations
-- ⚠️ **Project Management**: Temporarily disabled (needs migration to Supabase)
+- ✅ **Project Management**: Complete project lifecycle management
 - ✅ **CSV Import/Export**: Working with Supabase backend
 - ✅ **Real-time Features**: Live data synchronization implemented

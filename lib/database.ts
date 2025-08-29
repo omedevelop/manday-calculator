@@ -281,6 +281,55 @@ export async function getProject(id: string) {
   return data
 }
 
+export async function createProject(projectData: Database['public']['Tables']['projects']['Insert']) {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert(projectData)
+    .select(`
+      *,
+      people:project_people(
+        *,
+        teamMember:team_members(*),
+        role:rate_card_roles(*)
+      ),
+      holidays:project_holidays(*)
+    `)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProject(id: string, projectData: Database['public']['Tables']['projects']['Update']) {
+  const { data, error } = await supabase
+    .from('projects')
+    .update(projectData)
+    .eq('id', id)
+    .select(`
+      *,
+      people:project_people(
+        *,
+        teamMember:team_members(*),
+        role:rate_card_roles(*)
+      ),
+      holidays:project_holidays(*),
+      summary:project_summaries(*)
+    `)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteProject(id: string) {
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
 export async function getProjectSummary(projectId: string) {
   const { data, error } = await supabase
     .from('projects')
@@ -299,6 +348,17 @@ export async function getProjectSummary(projectId: string) {
     throw error
   }
 
+  return data
+}
+
+export async function upsertProjectSummary(summaryData: Database['public']['Tables']['project_summaries']['Insert']) {
+  const { data, error } = await supabase
+    .from('project_summaries')
+    .upsert(summaryData, { onConflict: 'projectId' })
+    .select()
+    .single()
+
+  if (error) throw error
   return data
 }
 

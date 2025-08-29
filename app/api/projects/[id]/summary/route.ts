@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { calculateTotals } from '@/lib/calculations'
+import { getProjectSummary, upsertProjectSummary } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // TODO: Migrate projects to Supabase
-  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
-  
-  /*
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-      include: {
-        people: true,
-        summary: true,
-      },
-    })
+    const project = await getProjectSummary(params.id)
 
     if (!project) {
       return NextResponse.json(
@@ -35,9 +26,9 @@ export async function GET(
         weekendMultiplier: person.weekendMultiplier ? Number(person.weekendMultiplier) : null,
         holidayMultiplier: person.holidayMultiplier ? Number(person.holidayMultiplier) : null,
       })),
-      taxEnabled: project.taxEnabled,
+      taxEnabled: project.taxEnabled ?? false,
       taxPercent: Number(project.taxPercent ?? 0),
-      pricingMode: project.pricingMode,
+      pricingMode: project.pricingMode ?? 'DIRECT',
       proposed: project.proposedPrice ? Number(project.proposedPrice) : null,
       targetROI: project.targetRoiPercent ? Number(project.targetRoiPercent) : null,
       targetMargin: project.targetMarginPercent ? Number(project.targetMarginPercent) : null,
@@ -46,27 +37,15 @@ export async function GET(
     const totals = calculateTotals(calculationInput)
 
     // Update or create summary
-    const summary = await prisma.projectSummary.upsert({
-      where: { projectId: project.id },
-      update: {
-        subtotal: totals.subtotal,
-        tax: totals.tax,
-        cost: totals.cost,
-        proposedPrice: totals.proposed,
-        roiPercent: totals.roiPercent,
-        marginPercent: totals.marginPercent,
-        currencyCode: project.currencyCode,
-      },
-      create: {
-        projectId: project.id,
-        subtotal: totals.subtotal,
-        tax: totals.tax,
-        cost: totals.cost,
-        proposedPrice: totals.proposed,
-        roiPercent: totals.roiPercent,
-        marginPercent: totals.marginPercent,
-        currencyCode: project.currencyCode,
-      },
+    const summary = await upsertProjectSummary({
+      projectId: project.id,
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      cost: totals.cost,
+      proposedPrice: totals.proposed,
+      roiPercent: totals.roiPercent,
+      marginPercent: totals.marginPercent,
+      currencyCode: project.currencyCode ?? 'THB',
     })
 
     return NextResponse.json({
@@ -75,11 +54,17 @@ export async function GET(
       totals,
     })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Project not found') {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      )
+    }
+    
     console.error('Error calculating project summary:', error)
     return NextResponse.json(
       { error: 'Failed to calculate project summary' },
       { status: 500 }
     )
   }
-  */
 }
