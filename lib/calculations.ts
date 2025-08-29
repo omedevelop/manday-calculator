@@ -60,7 +60,7 @@ export function calculateTotals(input: CalculationInput): CalculationResult {
       if (!targetROI) {
         proposedPrice = cost;
       } else {
-        proposedPrice = cost.mul(new Decimal(1).plus(targetROI.div(100)));
+        proposedPrice = cost.mul(new Decimal(1).plus(new Decimal(targetROI).div(100)));
       }
       break;
       
@@ -68,7 +68,7 @@ export function calculateTotals(input: CalculationInput): CalculationResult {
       if (!targetMargin) {
         proposedPrice = cost;
       } else {
-        proposedPrice = cost.div(new Decimal(1).minus(targetMargin.div(100)));
+        proposedPrice = cost.div(new Decimal(1).minus(new Decimal(targetMargin).div(100)));
       }
       break;
       

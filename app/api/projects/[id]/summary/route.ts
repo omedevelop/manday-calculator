@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateTotals } from '@/lib/calculations'
-import type { ProjectPerson } from '@/lib/types'
+// use runtime-safe coercion; Prisma may not export the type in some setups
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +25,7 @@ export async function GET(
 
     // Calculate totals
     const calculationInput = {
-      rows: (project.people as ProjectPerson[]).map((person) => ({
+      rows: project.people.map((person: any) => ({
         pricePerDay: Number(person.pricePerDay),
         allocatedDays: Number(person.allocatedDays),
         utilizationPercent: Number(person.utilizationPercent),
@@ -34,7 +34,7 @@ export async function GET(
         holidayMultiplier: person.holidayMultiplier ? Number(person.holidayMultiplier) : null,
       })),
       taxEnabled: project.taxEnabled,
-      taxPercent: project.taxPercent || 0,
+      taxPercent: Number(project.taxPercent ?? 0),
       pricingMode: project.pricingMode,
       proposed: project.proposedPrice ? Number(project.proposedPrice) : null,
       targetROI: project.targetRoiPercent ? Number(project.targetRoiPercent) : null,

@@ -86,44 +86,35 @@ async function main() {
     })
   }
 
-  // Create some sample team members
-  await prisma.teamMember.upsert({
-    where: { name: 'John Developer' },
-    update: {},
-    create: {
-      name: 'John Developer',
-      roleId: developerRole.id,
-      level: 'SENIOR',
-      defaultRatePerDay: 3500,
-      notes: 'Full-stack developer with 5+ years experience',
-      status: 'ACTIVE'
-    }
-  })
-
-  await prisma.teamMember.upsert({
-    where: { name: 'Sarah Designer' },
-    update: {},
-    create: {
-      name: 'Sarah Designer',
-      roleId: designerRole.id,
-      level: 'TEAM_LEAD',
-      defaultRatePerDay: 4500,
-      notes: 'UI/UX design lead',
-      status: 'ACTIVE'
-    }
-  })
-
-  await prisma.teamMember.upsert({
-    where: { name: 'Mike Manager' },
-    update: {},
-    create: {
-      name: 'Mike Manager',
-      roleId: projectManagerRole.id,
-      level: 'SENIOR',
-      defaultRatePerDay: 3500,
-      notes: 'Agile project manager',
-      status: 'ACTIVE'
-    }
+  // Create some sample team members (skip duplicates by name)
+  await prisma.teamMember.createMany({
+    data: [
+      {
+        name: 'John Developer',
+        roleId: developerRole.id,
+        level: 'SENIOR',
+        defaultRatePerDay: 3500,
+        notes: 'Full-stack developer with 5+ years experience',
+        status: 'ACTIVE'
+      },
+      {
+        name: 'Sarah Designer',
+        roleId: designerRole.id,
+        level: 'TEAM_LEAD',
+        defaultRatePerDay: 4500,
+        notes: 'UI/UX design lead',
+        status: 'ACTIVE'
+      },
+      {
+        name: 'Mike Manager',
+        roleId: projectManagerRole.id,
+        level: 'SENIOR',
+        defaultRatePerDay: 3500,
+        notes: 'Agile project manager',
+        status: 'ACTIVE'
+      }
+    ],
+    skipDuplicates: true
   })
 
   console.log('✅ Database seeded successfully!')

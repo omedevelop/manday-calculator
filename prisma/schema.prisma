@@ -18,6 +18,7 @@ model RateCardRole {
 
   tiers RateCardTier[]
   teamMembers TeamMember[]
+  projectPeople ProjectPerson[]
 
   @@map("rate_card_roles")
 }
@@ -80,7 +81,6 @@ model Project {
 
   people ProjectPerson[]
   holidays ProjectHoliday[]
-  templates ProjectTemplate[]
   summary ProjectSummary?
 
   @@map("projects")

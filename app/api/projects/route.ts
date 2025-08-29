@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Calculate initial summary if people exist
     if (project.people.length > 0) {
       const calculationInput = {
-        rows: (project.people as import('@/lib/types').ProjectPerson[]).map((person) => ({
+        rows: project.people.map((person: any) => ({
           pricePerDay: Number(person.pricePerDay),
           allocatedDays: Number(person.allocatedDays),
           utilizationPercent: Number(person.utilizationPercent),
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           holidayMultiplier: person.holidayMultiplier ? Number(person.holidayMultiplier) : null,
         })),
         taxEnabled: project.taxEnabled,
-        taxPercent: project.taxPercent || 0,
+        taxPercent: Number(project.taxPercent ?? 0),
         pricingMode: project.pricingMode,
         proposed: project.proposedPrice ? Number(project.proposedPrice) : null,
         targetROI: project.targetRoiPercent ? Number(project.targetRoiPercent) : null,
