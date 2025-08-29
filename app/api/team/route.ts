@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getTeamMembers, createTeamMember } from '@/lib/database'
 import { TeamMemberCreateSchema, TeamQuerySchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
 export const runtime = 'edge'
 export const revalidate = 120
-
-const SORTABLE_FIELDS = ['name', 'roleName', 'level', 'defaultRatePerDay', 'status', 'createdAt']
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,63 +21,15 @@ export async function GET(request: NextRequest) {
       sort
     } = TeamQuerySchema.parse(queryParams)
 
-    // Build where clause
-    const where: any = {}
-    
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { roleName: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-    
-    if (status) {
-      where.status = status
-    }
-    
-    if (roleId) {
-      where.roleId = roleId
-    }
-    
-    if (level) {
-      where.level = level
-    }
-
-    // Parse sort parameter
-    let orderBy: any = { name: 'asc' } // default sort
-    if (sort) {
-      const [field, direction] = sort.split(':')
-      if (SORTABLE_FIELDS.includes(field) && ['asc', 'desc'].includes(direction)) {
-        orderBy = { [field]: direction }
-      }
-    }
-
-    // Calculate pagination
-    const skip = (page - 1) * size
-
-    // Execute queries
-    const [teamMembers, total] = await Promise.all([
-      prisma.teamMember.findMany({
-        where,
-        include: {
-          role: true,
-        },
-        orderBy,
-        skip,
-        take: size,
-      }),
-      prisma.teamMember.count({ where })
-    ])
-
-    const response = {
-      data: teamMembers,
-      pagination: {
-        page,
-        size,
-        total,
-        pages: Math.ceil(total / size)
-      }
-    }
+    const response = await getTeamMembers({
+      search,
+      status,
+      roleId,
+      level,
+      page,
+      size,
+      sort
+    })
 
     const res = NextResponse.json(response)
     res.headers.set('Cache-Control', 's-maxage=120, stale-while-revalidate=600')
@@ -108,19 +58,14 @@ export async function POST(request: NextRequest) {
     const validatedData = TeamMemberCreateSchema.parse(body)
     
     // Create team member
-    const teamMember = await prisma.teamMember.create({
-      data: {
-        name: validatedData.name,
-        roleId: validatedData.roleId,
-        roleName: validatedData.roleName,
-        level: validatedData.level,
-        defaultRatePerDay: validatedData.defaultRatePerDay,
-        notes: validatedData.notes,
-        status: validatedData.status,
-      },
-      include: {
-        role: true,
-      },
+    const teamMember = await createTeamMember({
+      name: validatedData.name,
+      roleId: validatedData.roleId,
+      roleName: validatedData.roleName,
+      level: validatedData.level,
+      defaultRatePerDay: validatedData.defaultRatePerDay,
+      notes: validatedData.notes,
+      status: validatedData.status,
     })
 
     return NextResponse.json(teamMember, { status: 201 })

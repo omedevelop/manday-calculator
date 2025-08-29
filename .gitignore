@@ -12,3 +12,4 @@ coverage
 *.local
 *.pack
 *.zip
+.env*.local

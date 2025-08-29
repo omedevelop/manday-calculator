@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { bulkUpdateTeamMembers, bulkDeleteTeamMembers } from '@/lib/database'
 import { BulkActionSchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
@@ -10,48 +10,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, ids } = BulkActionSchema.parse(body)
 
-    let result: any
+    let result: { affected: number }
 
     switch (action) {
       case 'activate':
-        result = await prisma.teamMember.updateMany({
-          where: { id: { in: ids } },
-          data: { status: 'ACTIVE' }
-        })
+        result = await bulkUpdateTeamMembers(ids, { status: 'ACTIVE' })
         break
 
       case 'deactivate':
-        result = await prisma.teamMember.updateMany({
-          where: { id: { in: ids } },
-          data: { status: 'INACTIVE' }
-        })
+        result = await bulkUpdateTeamMembers(ids, { status: 'INACTIVE' })
         break
 
       case 'delete':
-        // Check if any members are referenced by projects
-        const membersWithProjects = await prisma.teamMember.findMany({
-          where: { 
-            id: { in: ids },
-            projectPeople: { some: {} }
-          },
-          select: { id: true, name: true }
-        })
-
-        if (membersWithProjects.length > 0) {
-          return NextResponse.json(
-            { 
-              error: 'Cannot delete team members',
-              message: 'Some team members are referenced by projects. Please deactivate them instead.',
-              code: 'REFERENCED_BY_PROJECTS',
-              referencedMembers: membersWithProjects
-            },
-            { status: 409 }
-          )
-        }
-
-        result = await prisma.teamMember.deleteMany({
-          where: { id: { in: ids } }
-        })
+        result = await bulkDeleteTeamMembers(ids)
         break
 
       default:
@@ -64,13 +35,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       action,
-      affected: result.count
+      affected: result.affected
     })
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
         { status: 400 }
+      )
+    }
+    
+    if (error instanceof Error && error.message.includes('referenced by projects')) {
+      const referencedMembers = (error as any).referencedMembers || []
+      return NextResponse.json(
+        { 
+          error: 'Cannot delete team members',
+          message: 'Some team members are referenced by projects. Please deactivate them instead.',
+          code: 'REFERENCED_BY_PROJECTS',
+          referencedMembers
+        },
+        { status: 409 }
       )
     }
     

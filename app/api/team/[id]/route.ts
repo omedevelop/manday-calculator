@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { updateTeamMember, deleteTeamMember } from '@/lib/database'
 import { TeamMemberUpdateSchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
@@ -13,33 +13,15 @@ export async function PATCH(
     const body = await request.json()
     const validatedData = TeamMemberUpdateSchema.parse({ ...body, id: params.id })
 
-    // Check if team member exists
-    const existingMember = await prisma.teamMember.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!existingMember) {
-      return NextResponse.json(
-        { error: 'Team member not found' },
-        { status: 404 }
-      )
-    }
-
     // Update team member
-    const teamMember = await prisma.teamMember.update({
-      where: { id: params.id },
-      data: {
-        name: validatedData.name,
-        roleId: validatedData.roleId,
-        roleName: validatedData.roleName,
-        level: validatedData.level,
-        defaultRatePerDay: validatedData.defaultRatePerDay,
-        notes: validatedData.notes,
-        status: validatedData.status,
-      },
-      include: {
-        role: true,
-      },
+    const teamMember = await updateTeamMember(params.id, {
+      name: validatedData.name,
+      roleId: validatedData.roleId,
+      roleName: validatedData.roleName,
+      level: validatedData.level,
+      defaultRatePerDay: validatedData.defaultRatePerDay,
+      notes: validatedData.notes,
+      status: validatedData.status,
     })
 
     return NextResponse.json(teamMember)
@@ -48,6 +30,13 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
         { status: 400 }
+      )
+    }
+    
+    if (error instanceof Error && error.message.includes('No rows')) {
+      return NextResponse.json(
+        { error: 'Team member not found' },
+        { status: 404 }
       )
     }
     
@@ -64,40 +53,30 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if team member exists
-    const existingMember = await prisma.teamMember.findUnique({
-      where: { id: params.id },
-      include: {
-        projectPeople: true
-      }
-    })
-
-    if (!existingMember) {
-      return NextResponse.json(
-        { error: 'Team member not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if team member is referenced by any projects
-    if (existingMember.projectPeople.length > 0) {
-      return NextResponse.json(
-        { 
-          error: 'Cannot delete team member',
-          message: 'This team member is referenced by one or more projects. Please deactivate the member instead.',
-          code: 'REFERENCED_BY_PROJECTS'
-        },
-        { status: 409 }
-      )
-    }
-
-    // Delete team member
-    await prisma.teamMember.delete({
-      where: { id: params.id }
-    })
-
+    // Delete team member (includes reference check)
+    await deleteTeamMember(params.id)
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('referenced by projects')) {
+        return NextResponse.json(
+          { 
+            error: 'Cannot delete team member',
+            message: 'This team member is referenced by one or more projects. Please deactivate the member instead.',
+            code: 'REFERENCED_BY_PROJECTS'
+          },
+          { status: 409 }
+        )
+      }
+      
+      if (error.message.includes('No rows')) {
+        return NextResponse.json(
+          { error: 'Team member not found' },
+          { status: 404 }
+        )
+      }
+    }
+    
     console.error('Error deleting team member:', error)
     return NextResponse.json(
       { error: 'Failed to delete team member' },

@@ -1,19 +1,11 @@
 export const revalidate = 300
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getRateCardRoles } from '@/lib/database'
 import { rateCardTierSchema } from '@/lib/validations'
 
 export async function GET() {
   try {
-    const rateCard = await prisma.rateCardRole.findMany({
-      include: {
-        tiers: {
-          where: { active: true },
-          orderBy: { level: 'asc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
+    const rateCard = await getRateCardRoles()
 
     const res = NextResponse.json(rateCard)
     res.headers.set('Cache-Control', 's-maxage=300, stale-while-revalidate=600')
@@ -38,29 +30,51 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    const { supabase } = await import('@/lib/database')
     const results = []
 
     for (const tierData of body) {
       const validatedData = rateCardTierSchema.parse(tierData)
       
-      const result = await prisma.rateCardTier.upsert({
-        where: {
-          roleId_level: {
+      // Try to update existing tier
+      const { data: existingTier } = await supabase
+        .from('rate_card_tiers')
+        .select('id')
+        .eq('roleId', validatedData.roleId)
+        .eq('level', validatedData.level)
+        .single()
+
+      let result
+      if (existingTier) {
+        // Update existing
+        const { data, error } = await supabase
+          .from('rate_card_tiers')
+          .update({
+            pricePerDay: validatedData.pricePerDay,
+            active: validatedData.active,
+          })
+          .eq('id', existingTier.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        result = data
+      } else {
+        // Create new
+        const { data, error } = await supabase
+          .from('rate_card_tiers')
+          .insert({
             roleId: validatedData.roleId,
             level: validatedData.level,
-          },
-        },
-        update: {
-          pricePerDay: validatedData.pricePerDay,
-          active: validatedData.active,
-        },
-        create: {
-          roleId: validatedData.roleId,
-          level: validatedData.level,
-          pricePerDay: validatedData.pricePerDay,
-          active: validatedData.active,
-        },
-      })
+            pricePerDay: validatedData.pricePerDay,
+            active: validatedData.active,
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        result = data
+      }
       
       results.push(result)
     }
