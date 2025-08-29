@@ -5,10 +5,11 @@ import { ZodError } from 'zod'
 
 export const runtime = 'nodejs'
 
-const SORTABLE_FIELDS = ['name', 'roleName', 'level', 'defaultRatePerDay', 'status', 'createdAt']
+// Constants for CSV export
+const MAX_EXPORT_SIZE = 10000 // Maximum number of records to export
 
-function sanitizeCSVCell(value: string): string {
-  if (!value) return ''
+function sanitizeCSVCell(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return ''
   
   const trimmed = value.toString().trim()
   
@@ -25,7 +26,7 @@ function sanitizeCSVCell(value: string): string {
   return trimmed
 }
 
-function formatCSVRow(data: string[]): string {
+function formatCSVRow(data: (string | number | null | undefined)[]): string {
   return data.map(sanitizeCSVCell).join(',') + '\n'
 }
 
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const queryParams = Object.fromEntries(searchParams.entries())
     
+    // Parse and validate query parameters
     const {
       search,
       status,
@@ -42,48 +44,29 @@ export async function GET(request: NextRequest) {
       sort
     } = TeamQuerySchema.omit({ page: true, size: true }).parse(queryParams)
 
-    // Build where clause (same logic as main API)
-    const where: any = {}
-    
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { roleName: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-    
-    if (status) {
-      where.status = status
-    }
-    
-    if (roleId) {
-      where.roleId = roleId
-    }
-    
-    if (level) {
-      where.level = level
-    }
-
-    // Parse sort parameter
-    let orderBy: any = { name: 'asc' } // default sort
-    if (sort) {
-      const [field, direction] = sort.split(':')
-      if (SORTABLE_FIELDS.includes(field) && ['asc', 'desc'].includes(direction)) {
-        orderBy = { [field]: direction }
-      }
-    }
-
-    // Fetch all matching team members
+    // Fetch all matching team members using the same logic as the main API
     const result = await getTeamMembers({
-      search: search,
-      status: status,
-      roleId: roleId,
-      level: level,
+      search,
+      status,
+      roleId,
+      level,
       page: 1,
-      size: 10000, // Get all for export
-      sort: sort
+      size: MAX_EXPORT_SIZE,
+      sort
     })
+    
     const teamMembers = result.data
+    
+    // Check if we hit the export limit
+    if (teamMembers.length >= MAX_EXPORT_SIZE) {
+      return NextResponse.json(
+        { 
+          error: 'Export size limit exceeded', 
+          message: `Cannot export more than ${MAX_EXPORT_SIZE} records. Please apply filters to reduce the result set.` 
+        },
+        { status: 413 }
+      )
+    }
 
     // Create CSV content
     let csvContent = ''
@@ -104,8 +87,8 @@ export async function GET(request: NextRequest) {
         member.name,
         member.roleName,
         member.level,
-        member.defaultRatePerDay.toString(),
-        member.notes || '',
+        member.defaultRatePerDay,
+        member.notes,
         member.status || 'ACTIVE'
       ])
     }

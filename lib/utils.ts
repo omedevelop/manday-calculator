@@ -58,7 +58,23 @@ export function getHolidayTreatmentColor(treatment: string): string {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).substr(2, 9)
+  // Use crypto.randomUUID() if available (Node.js 14.17+ and modern browsers)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  
+  // Fallback to crypto.getRandomValues() for older environments
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint8Array(16)
+    crypto.getRandomValues(array)
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+  }
+  
+  // Final fallback for environments without crypto API (should be very rare)
+  // This maintains the original format but adds a timestamp for better uniqueness
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substr(2, 9)
+  return `${timestamp}-${random}`
 }
 
 export function debounce<T extends (...args: any[]) => any>(

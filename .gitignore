@@ -13,3 +13,7 @@ coverage
 *.pack
 *.zip
 .env*.local
+
+# SonarCloud Scanner
+sonar-scanner-*
+sonar-project.properties
