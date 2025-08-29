@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Calculate initial summary if people exist
     if (project.people.length > 0) {
       const calculationInput = {
-        rows: project.people.map(person => ({
+        rows: (project.people as import('@/lib/types').ProjectPerson[]).map((person) => ({
           pricePerDay: Number(person.pricePerDay),
           allocatedDays: Number(person.allocatedDays),
           utilizationPercent: Number(person.utilizationPercent),

@@ -33,13 +33,20 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    roleId: string
+    level: string
+    defaultRatePerDay: number
+    notes: string
+    status: 'ACTIVE' | 'INACTIVE'
+  }>({
     name: '',
     roleId: '',
     level: '',
     defaultRatePerDay: 0,
     notes: '',
-    status: 'ACTIVE' as const,
+    status: 'ACTIVE',
   })
 
   useEffect(() => {

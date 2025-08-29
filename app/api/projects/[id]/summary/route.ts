@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateTotals } from '@/lib/calculations'
+import type { ProjectPerson } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +25,7 @@ export async function GET(
 
     // Calculate totals
     const calculationInput = {
-      rows: project.people.map(person => ({
+      rows: (project.people as ProjectPerson[]).map((person) => ({
         pricePerDay: Number(person.pricePerDay),
         allocatedDays: Number(person.allocatedDays),
         utilizationPercent: Number(person.utilizationPercent),
