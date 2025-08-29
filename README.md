@@ -12,6 +12,7 @@ A comprehensive internal web application for calculating project costs, pricing,
 - **Team Library**: Store and manage team member information and default rates
 - **Holiday Management**: Handle public holidays and calendar exclusions
 - **Export Options**: CSV, XLSX, and PDF export capabilities
+- **Project Templates**: Save and load project configurations for reuse
 
 ### Technical Features
 - **Edge Runtime**: Fast GET operations for improved performance
@@ -21,6 +22,7 @@ A comprehensive internal web application for calculating project costs, pricing,
 - **Form Validation**: Zod schema validation for all inputs
 - **Responsive UI**: Modern interface built with Tailwind CSS and shadcn/ui
 - **Database**: PostgreSQL with Supabase
+- **Type Safety**: Full TypeScript coverage with generated Supabase types
 
 ## Tech Stack
 
@@ -31,6 +33,7 @@ A comprehensive internal web application for calculating project costs, pricing,
 - **Real-time**: Supabase subscriptions for live updates
 - **Validation**: Zod schemas
 - **Calculations**: Decimal.js for financial precision
+- **Testing**: Jest with TypeScript support
 - **Deployment**: Vercel
 
 ## Prerequisites
@@ -77,6 +80,7 @@ A comprehensive internal web application for calculating project costs, pricing,
    NEXT_PUBLIC_SUPABASE_URL="https://your-project-ref.supabase.co"
    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
    SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+   NEXT_PUBLIC_APP_NAME="Manday Calculator"
    ```
 
 5. **Set up the database**
@@ -158,21 +162,23 @@ The seed script creates:
 ## Usage
 
 ### Dashboard
-- Overview of all projects
-- Quick access to key features
+- Overview of all projects with quick access cards
+- Recent projects display
+- Quick actions for common tasks
 - Project statistics and summaries
 
 ### Rate Card Management
 - Configure daily rates by role and experience level
 - Enable/disable specific rate combinations
 - Visual indicators for different tiers
+- Real-time updates across the application
 
 ### Team Library
 - **CRUD Operations**: Create, read, update, delete team members
 - **Search & Filter**: By name, role, level, status
 - **Sort & Pagination**: All columns sortable with pagination
 - **Bulk Actions**: Select multiple members for operations
-- **CSV Import/Export**: Bulk data management
+- **CSV Import/Export**: Bulk data management with validation
 - **Real-time Updates**: Live data synchronization
 - **Calculator Integration**: Select members to prefill calculator rows
 
@@ -180,7 +186,7 @@ The seed script creates:
 - **Overview**: Project settings and day configuration
 - **People**: Team allocation with utilization and multipliers
 - **Holidays**: Calendar management and holiday exclusions
-- **Export**: Generate reports in various formats
+- **Export**: Generate reports in various formats (CSV, XLSX, PDF)
 
 ### Pricing Modes
 
@@ -217,18 +223,27 @@ The seed script creates:
 ```
 ├── app/                    # Next.js app directory
 │   ├── api/               # API routes
+│   │   ├── projects/      # Project endpoints
+│   │   ├── rate-card/     # Rate card endpoints
+│   │   └── team/          # Team endpoints
+│   ├── projects/          # Project pages
+│   ├── rate-card/         # Rate card page
+│   ├── team/              # Team library page
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
 │   └── page.tsx           # Dashboard page
 ├── components/             # React components
+│   ├── team/              # Team-specific components
 │   └── ui/                # shadcn/ui components
 ├── lib/                    # Utility functions
+│   ├── __tests__/         # Test files
 │   ├── calculations.ts     # Core calculation engine
 │   ├── database.ts         # Supabase database functions
 │   ├── supabase-types.ts   # Generated Supabase types
 │   ├── types.ts            # TypeScript types
 │   ├── utils.ts            # Helper functions
-│   └── validations.ts      # Zod schemas
+│   ├── validations.ts      # Zod schemas
+│   └── utils/              # Additional utilities
 ├── scripts/                # Database scripts
 │   ├── migrations/         # SQL migration files
 │   └── setup-database.ts   # Database setup script
@@ -241,6 +256,8 @@ The seed script creates:
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run db:setup` - Set up database schema and seed data
+- `npm run db:migrate` - Run database migrations
+- `npm run db:seed` - Seed database with sample data
 - `npm run supabase:types` - Generate TypeScript types from Supabase
 - `npm run supabase:reset` - Reset Supabase database
 
@@ -281,12 +298,17 @@ Run the test suite:
 npm test
 ```
 
-The application includes unit tests for the calculation engine covering:
-- Basic total calculations
-- Tax handling
-- ROI and margin pricing modes
-- Multiplier calculations
-- Input validation
+The application includes comprehensive unit tests covering:
+- **Calculation Engine**: Basic total calculations, tax handling, ROI and margin pricing modes, multiplier calculations
+- **CSV Operations**: Import/export functionality, data validation, error handling
+- **Input Validation**: Zod schema validation for all forms
+- **Database Operations**: CRUD operations and data integrity
+
+### Test Coverage
+- Core calculation logic with edge cases
+- CSV import/export with various data formats
+- Form validation and error handling
+- Database operations and data consistency
 
 ## Deployment
 
@@ -313,6 +335,7 @@ Required for production:
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (for server-side operations)
+- `NEXT_PUBLIC_APP_NAME`: Application name (optional, defaults to "Manday Calculator")
 
 ### Security Headers
 
@@ -330,14 +353,25 @@ The application includes security headers:
 - **Database Indexes**: Optimized queries with proper indexing
 - **Connection Pooling**: Supabase handles connection pooling automatically
 - **Caching**: Optional caching for GET operations
+- **Type Safety**: Full TypeScript coverage reduces runtime errors
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Submit a pull request
+5. Ensure all tests pass (`npm test`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Submit a pull request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Add comprehensive tests for new features
+- Use Zod for all form validation
+- Follow the existing code style and patterns
+- Update documentation for new features
 
 ## License
 
@@ -346,21 +380,27 @@ This project is licensed under the MIT License.
 ## Support
 
 For issues and questions:
-1. Check the documentation
-2. Review existing issues
-3. Create a new issue with detailed information
+1. Check the documentation above
+2. Review existing issues in the repository
+3. Create a new issue with detailed information including:
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Environment details
+   - Error messages or logs
 
 ## Roadmap
 
-Future enhancements:
-- **User authentication and RBAC** (using Supabase Auth)
-- **Audit logging** with Supabase triggers
-- **Advanced reporting** and analytics
-- **Project management features** (currently disabled, needs migration)
-- **Integration with external tools**
-- **Mobile application**
-- **Multi-currency support**
-- **Advanced real-time collaboration**
+Future enhancements planned:
+- **User Authentication**: Supabase Auth integration with role-based access control
+- **Audit Logging**: Comprehensive audit trail with Supabase triggers
+- **Advanced Reporting**: Analytics dashboard with charts and insights
+- **Project Templates**: Save and load project configurations
+- **Integration APIs**: Connect with external project management tools
+- **Mobile Application**: React Native or PWA for mobile access
+- **Multi-currency Support**: International currency handling
+- **Advanced Real-time Collaboration**: Multi-user editing with conflict resolution
+- **Advanced Export Options**: More report formats and customization
+- **Performance Monitoring**: Application performance tracking
 
 ## Migration Notes
 
@@ -370,3 +410,12 @@ This application has been fully migrated from Prisma to Pure Supabase:
 - ✅ **Project Management**: Complete project lifecycle management
 - ✅ **CSV Import/Export**: Working with Supabase backend
 - ✅ **Real-time Features**: Live data synchronization implemented
+- ✅ **Type Safety**: Generated Supabase types for full type coverage
+- ✅ **Testing**: Comprehensive test suite for core functionality
+
+### Key Improvements
+- **Real-time Updates**: Live data synchronization across all components
+- **Type Safety**: Full TypeScript coverage with generated database types
+- **Performance**: Optimized queries and edge runtime for better performance
+- **Scalability**: Supabase handles scaling automatically
+- **Security**: Row-level security and proper authentication patterns
