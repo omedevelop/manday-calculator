@@ -1,0 +1,21 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["bom1"],
+  "functions": {
+    "app/api/projects/route.ts": {
+      "runtime": "nodejs18.x"
+    },
+    "app/api/projects/[id]/summary/route.ts": {
+      "runtime": "edge"
+    },
+    "app/api/rate-card/route.ts": {
+      "runtime": "edge"
+    },
+    "app/api/team/route.ts": {
+      "runtime": "edge"
+    }
+  }
+}

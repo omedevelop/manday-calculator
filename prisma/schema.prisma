@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RateCardRole {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tiers RateCardTier[]
+  teamMembers TeamMember[]
+
+  @@map("rate_card_roles")
+}
+
+model RateCardTier {
+  id           String       @id @default(cuid())
+  roleId       String
+  level        RoleLevel
+  pricePerDay  Int
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  role RateCardRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, level])
+  @@map("rate_card_tiers")
+}
+
+model TeamMember {
+  id                String       @id @default(cuid())
+  name              String
+  roleId            String?
+  level             RoleLevel?
+  defaultRatePerDay Int
+  notes             String?
+  status            MemberStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  role RateCardRole? @relation(fields: [roleId], references: [id])
+  projectPeople ProjectPerson[]
+
+  @@map("team_members")
+}
+
+model Project {
+  id                    String        @id @default(cuid())
+  name                  String
+  client                String
+  currencyCode          String        @default("THB")
+  currencySymbol        String        @default("฿")
+  hoursPerDay           Int           @default(7)
+  taxEnabled            Boolean       @default(false)
+  taxPercent            Decimal?      @db.Decimal(5,2)
+  pricingMode           PricingMode   @default(DIRECT)
+  proposedPrice         Decimal?      @db.Decimal(12,2)
+  targetRoiPercent      Decimal?     @db.Decimal(5,2)
+  targetMarginPercent   Decimal?      @db.Decimal(5,2)
+  fxNote                String?
+  executionDays         Int           @default(0)
+  bufferDays            Int           @default(0)
+  finalDays             Int           @default(0)
+  calendarMode          Boolean       @default(false)
+  startDate             DateTime?
+  endDate               DateTime?
+  workingWeek           WorkingWeek   @default(MON_FRI)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  people ProjectPerson[]
+  holidays ProjectHoliday[]
+  templates ProjectTemplate[]
+  summary ProjectSummary?
+
+  @@map("projects")
+}
+
+model ProjectHoliday {
+  id                 String           @id @default(cuid())
+  projectId          String
+  date               DateTime
+  name               String
+  treatment          HolidayTreatment @default(EXCLUDE)
+  holidayMultiplier  Decimal?         @db.Decimal(5,2)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, date])
+  @@map("project_holidays")
+}
+
+model ProjectTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("project_templates")
+}
+
+model ProjectPerson {
+  id                  String       @id @default(cuid())
+  projectId           String
+  teamMemberId        String?
+  personLabel         String
+  roleId              String?
+  level               RoleLevel?
+  rateSource          RateSource   @default(RATE_CARD)
+  pricePerDay         Decimal      @db.Decimal(8,2)
+  allocatedDays       Decimal      @db.Decimal(5,2)
+  utilizationPercent  Decimal      @db.Decimal(5,2)
+  nonBillable         Boolean      @default(false)
+  weekendMultiplier   Decimal?     @db.Decimal(5,2)
+  holidayMultiplier   Decimal?     @db.Decimal(5,2)
+  notes               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id])
+  role RateCardRole? @relation(fields: [roleId], references: [id])
+
+  @@index([projectId])
+  @@map("project_people")
+}
+
+model ProjectSummary {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  subtotal       Decimal  @db.Decimal(12,2)
+  tax            Decimal  @db.Decimal(12,2)
+  cost           Decimal  @db.Decimal(12,2)
+  proposedPrice  Decimal  @db.Decimal(12,2)
+  roiPercent     Decimal  @db.Decimal(5,2)
+  marginPercent  Decimal  @db.Decimal(5,2)
+  currencyCode   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_summaries")
+}
+
+enum RoleLevel {
+  TEAM_LEAD
+  SENIOR
+  JUNIOR
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PricingMode {
+  DIRECT
+  ROI
+  MARGIN
+}
+
+enum HolidayTreatment {
+  EXCLUDE
+  BILLABLE_MULTIPLIER
+  INFO
+}
+
+enum RateSource {
+  RATE_CARD
+  CUSTOM
+}
+
+enum WorkingWeek {
+  MON_FRI
+  MON_SAT
+  SUN_THU
+}
