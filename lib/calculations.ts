@@ -16,33 +16,30 @@ export function calculateTotals(input: CalculationInput): CalculationResult {
     targetMargin
   } = input;
 
-  // Calculate subtotal from person rows
+  // Calculate subtotal from person rows (minimize Decimal allocations)
   let subtotal = new Decimal(0);
-  
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     if (row.nonBillable) continue;
-    
+
+    const pricePerDay = new Decimal(row.pricePerDay);
     const effectiveDays = new Decimal(row.allocatedDays)
       .mul(row.utilizationPercent)
       .div(100);
-    
-    let rowCost = new Decimal(row.pricePerDay).mul(effectiveDays);
-    
-    // Apply multipliers if present
-    if (row.weekendMultiplier) {
-      rowCost = rowCost.mul(row.weekendMultiplier);
-    }
-    
-    if (row.holidayMultiplier) {
-      rowCost = rowCost.mul(row.holidayMultiplier);
-    }
-    
+
+    let rowCost = pricePerDay.mul(effectiveDays);
+    const weekend = row.weekendMultiplier ?? null;
+    const holiday = row.holidayMultiplier ?? null;
+
+    if (weekend !== null) rowCost = rowCost.mul(weekend);
+    if (holiday !== null) rowCost = rowCost.mul(holiday);
+
     subtotal = subtotal.plus(rowCost);
   }
 
   // Calculate tax
-  const tax = taxEnabled 
-    ? subtotal.mul(taxPercent).div(100)
+  const tax = taxEnabled
+    ? subtotal.mul(new Decimal(taxPercent).div(100))
     : new Decimal(0);
 
   // Calculate total cost
@@ -56,21 +53,25 @@ export function calculateTotals(input: CalculationInput): CalculationResult {
       proposedPrice = proposed ? new Decimal(proposed) : cost;
       break;
       
-    case 'ROI':
+    case 'ROI': {
       if (!targetROI) {
         proposedPrice = cost;
       } else {
-        proposedPrice = cost.mul(new Decimal(1).plus(new Decimal(targetROI).div(100)));
+        const roiFactor = new Decimal(1).plus(new Decimal(targetROI).div(100));
+        proposedPrice = cost.mul(roiFactor);
       }
       break;
-      
-    case 'MARGIN':
+    }
+
+    case 'MARGIN': {
       if (!targetMargin) {
         proposedPrice = cost;
       } else {
-        proposedPrice = cost.div(new Decimal(1).minus(new Decimal(targetMargin).div(100)));
+        const marginDivisor = new Decimal(1).minus(new Decimal(targetMargin).div(100));
+        proposedPrice = cost.div(marginDivisor);
       }
       break;
+    }
       
     default:
       proposedPrice = cost;

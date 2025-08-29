@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { teamMemberSchema } from '@/lib/validations'
 
 export const runtime = 'edge'
+export const revalidate = 120
 
 export async function GET() {
   try {
@@ -13,7 +14,9 @@ export async function GET() {
       orderBy: { name: 'asc' },
     })
 
-    return NextResponse.json(teamMembers)
+    const res = NextResponse.json(teamMembers)
+    res.headers.set('Cache-Control', 's-maxage=120, stale-while-revalidate=600')
+    return res
   } catch (error) {
     console.error('Error fetching team members:', error)
     return NextResponse.json(

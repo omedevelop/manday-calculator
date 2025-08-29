@@ -1,3 +1,4 @@
+export const revalidate = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { projectSchema } from '@/lib/validations'
@@ -21,7 +22,9 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json(projects)
+    const res = NextResponse.json(projects)
+    res.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
+    return res
   } catch (error) {
     console.error('Error fetching projects:', error)
     return NextResponse.json(
