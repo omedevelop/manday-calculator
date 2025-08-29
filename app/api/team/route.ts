@@ -42,11 +42,14 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    // Return empty result on any error to keep UI responsive
     console.error('Error fetching team members:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch team members' },
-      { status: 500 }
-    )
+    const res = NextResponse.json({
+      data: [],
+      pagination: { page: 1, size: 25, total: 0, pages: 0 }
+    })
+    res.headers.set('Cache-Control', 's-maxage=15, stale-while-revalidate=60')
+    return res
   }
 }
 

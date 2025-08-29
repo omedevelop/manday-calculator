@@ -134,6 +134,18 @@ CREATE INDEX "idx_team_members_rolename_level" ON "team_members"("roleName", "le
 CREATE INDEX "idx_project_people_project_id" ON "project_people"("projectId");
 CREATE INDEX "idx_project_holidays_project_date" ON "project_holidays"("projectId", "date");
 
+-- Additional indexes for better query performance
+CREATE INDEX "idx_team_members_role_id" ON "team_members"("roleId");
+CREATE INDEX "idx_team_members_name_search" ON "team_members" USING gin(to_tsvector('english', name));
+CREATE INDEX "idx_projects_client" ON "projects"("client");
+CREATE INDEX "idx_projects_created_at" ON "projects"("createdAt" DESC);
+CREATE INDEX "idx_project_people_team_member_id" ON "project_people"("teamMemberId");
+CREATE INDEX "idx_project_people_role_id" ON "project_people"("roleId");
+CREATE INDEX "idx_rate_card_tiers_role_id" ON "rate_card_tiers"("roleId");
+CREATE INDEX "idx_rate_card_tiers_active" ON "rate_card_tiers"("active") WHERE "active" = true;
+CREATE INDEX "idx_project_templates_name" ON "project_templates"("name");
+CREATE INDEX "idx_project_templates_updated_at" ON "project_templates"("updatedAt" DESC);
+
 -- Create updated_at triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -152,3 +164,34 @@ CREATE TRIGGER update_project_people_updated_at BEFORE UPDATE ON "project_people
 CREATE TRIGGER update_project_holidays_updated_at BEFORE UPDATE ON "project_holidays" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_templates_updated_at BEFORE UPDATE ON "project_templates" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_summaries_updated_at BEFORE UPDATE ON "project_summaries" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add constraints for data integrity
+ALTER TABLE "projects" ADD CONSTRAINT "chk_projects_hours_per_day" CHECK ("hoursPerDay" > 0 AND "hoursPerDay" <= 24);
+ALTER TABLE "projects" ADD CONSTRAINT "chk_projects_tax_percent" CHECK ("taxPercent" IS NULL OR ("taxPercent" >= 0 AND "taxPercent" <= 100));
+ALTER TABLE "projects" ADD CONSTRAINT "chk_projects_target_roi" CHECK ("targetRoiPercent" IS NULL OR "targetRoiPercent" >= 0);
+ALTER TABLE "projects" ADD CONSTRAINT "chk_projects_target_margin" CHECK ("targetMarginPercent" IS NULL OR ("targetMarginPercent" >= 0 AND "targetMarginPercent" < 100));
+ALTER TABLE "projects" ADD CONSTRAINT "chk_projects_dates" CHECK ("startDate" IS NULL OR "endDate" IS NULL OR "startDate" <= "endDate");
+
+ALTER TABLE "project_people" ADD CONSTRAINT "chk_project_people_price_per_day" CHECK ("pricePerDay" > 0);
+ALTER TABLE "project_people" ADD CONSTRAINT "chk_project_people_allocated_days" CHECK ("allocatedDays" >= 0);
+ALTER TABLE "project_people" ADD CONSTRAINT "chk_project_people_utilization" CHECK ("utilizationPercent" >= 0 AND "utilizationPercent" <= 100);
+ALTER TABLE "project_people" ADD CONSTRAINT "chk_project_people_weekend_multiplier" CHECK ("weekendMultiplier" IS NULL OR "weekendMultiplier" >= 0);
+ALTER TABLE "project_people" ADD CONSTRAINT "chk_project_people_holiday_multiplier" CHECK ("holidayMultiplier" IS NULL OR "holidayMultiplier" >= 0);
+
+ALTER TABLE "project_holidays" ADD CONSTRAINT "chk_project_holidays_multiplier" CHECK ("holidayMultiplier" IS NULL OR "holidayMultiplier" >= 0);
+
+ALTER TABLE "team_members" ADD CONSTRAINT "chk_team_members_default_rate" CHECK ("defaultRatePerDay" > 0);
+
+ALTER TABLE "rate_card_tiers" ADD CONSTRAINT "chk_rate_card_tiers_price" CHECK ("pricePerDay" >= 0);
+
+-- Insert some default rate card roles for common positions
+INSERT INTO "rate_card_roles" ("name") VALUES 
+    ('Developer'),
+    ('Designer'),
+    ('Project Manager'),
+    ('Business Analyst'),
+    ('QA Engineer'),
+    ('DevOps Engineer'),
+    ('Data Scientist'),
+    ('UX Researcher')
+ON CONFLICT ("name") DO NOTHING;

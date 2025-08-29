@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,15 +19,16 @@ import {
   Search, 
   ChevronUp, 
   ChevronDown,
-  MoreHorizontal,
-  FileText,
   Users,
   Filter,
-  X
+  X,
+  User,
+  Briefcase,
+  DollarSign
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { TeamMemberDrawer } from '@/components/team/TeamMemberDrawer'
 import { CSVImportDialog } from '@/components/team/CSVImportDialog'
+import { QuickStartGuide } from '@/components/team/QuickStartGuide'
 
 interface TeamMember {
   id: string
@@ -91,6 +92,7 @@ export default function TeamPage() {
   const [rateCardRoles, setRateCardRoles] = useState<RateCardRole[]>([])
   const [pagination, setPagination] = useState({ page: 1, size: 25, total: 0, pages: 0 })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
   
   // Filters and sorting
@@ -107,9 +109,6 @@ export default function TeamPage() {
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
   const [bulkAction, setBulkAction] = useState<'activate' | 'deactivate' | 'delete'>('activate')
-  
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Debounced search
   const [searchDebounced, setSearchDebounced] = useState('')
@@ -130,6 +129,7 @@ export default function TeamPage() {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true)
+      setError(null)
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         size: pagination.size.toString(),
@@ -141,16 +141,27 @@ export default function TeamPage() {
       if (levelFilter) params.append('level', levelFilter)
       if (sortField && sortDirection) params.append('sort', `${sortField}:${sortDirection}`)
 
-      const response = await fetch(`/api/team?${params}`)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      const response = await fetch(`/api/team?${params}`, { signal: controller.signal, cache: 'no-store' })
+      clearTimeout(timeout)
+      
       if (response.ok) {
         const data: TeamResponse = await response.json()
         setTeamMembers(data.data)
         setPagination(data.pagination)
       } else {
         console.error('Failed to fetch team members')
+        setError('Unable to load team members. Please check your database configuration.')
       }
-    } catch (error) {
-      console.error('Error fetching team members:', error)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please check your network or try again.')
+      } else {
+        console.error('Error fetching team members:', error)
+        setError('Failed to load team members. Please check your database configuration.')
+      }
+      setTeamMembers([])
     } finally {
       setLoading(false)
     }
@@ -158,13 +169,26 @@ export default function TeamPage() {
 
   const fetchRateCardRoles = async () => {
     try {
-      const response = await fetch('/api/rate-card')
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      const response = await fetch('/api/rate-card', { signal: controller.signal, cache: 'no-store' })
+      clearTimeout(timeout)
+      
       if (response.ok) {
         const data = await response.json()
         setRateCardRoles(data)
+      } else {
+        console.error('Failed to fetch rate card roles')
+        setError((prev) => prev || 'Unable to load rate card roles. Please check your database configuration.')
       }
-    } catch (error) {
-      console.error('Error fetching rate card roles:', error)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        setError((prev) => prev || 'Rate card request timed out. Please check your network or try again.')
+      } else {
+        console.error('Error fetching rate card roles:', error)
+        setError((prev) => prev || 'Failed to load rate card roles. Please check your database configuration.')
+      }
+      setRateCardRoles([])
     }
   }
 
@@ -179,11 +203,7 @@ export default function TeamPage() {
   }
 
   const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedMembers(new Set(teamMembers.map(m => m.id)))
-    } else {
-      setSelectedMembers(new Set())
-    }
+    setSelectedMembers(checked ? new Set(teamMembers.map(m => m.id)) : new Set())
   }
 
   const handleSelectMember = (id: string, checked: boolean) => {
@@ -274,7 +294,17 @@ export default function TeamPage() {
     setLevelFilter('')
   }
 
+  // Computed values
   const hasActiveFilters = searchTerm || statusFilter || roleFilter || levelFilter
+
+  const teamStats = useMemo(() => {
+    const active = teamMembers.filter(m => m.status === 'ACTIVE').length
+    const inactive = teamMembers.filter(m => m.status === 'INACTIVE').length
+    const totalRate = teamMembers.reduce((sum, m) => sum + m.defaultRatePerDay, 0)
+    const avgRate = teamMembers.length > 0 ? Math.round(totalRate / teamMembers.length) : 0
+    
+    return { active, inactive, totalRate, avgRate }
+  }, [teamMembers])
 
   // Render helpers
   const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -296,7 +326,22 @@ export default function TeamPage() {
   if (loading && teamMembers.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading...</div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600">Loading team members...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && teamMembers.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-lg text-red-600 mb-2">{error}</div>
+            <div className="text-sm text-gray-500">If the problem persists, contact the administrator.</div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -320,12 +365,62 @@ export default function TeamPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button onClick={() => setShowDrawer(true)}>
+          <Button onClick={() => setShowDrawer(true)} size="lg" className="px-6">
             <UserPlus className="h-4 w-4 mr-2" />
-            Add Member
+            Add Team Member
           </Button>
         </div>
       </div>
+
+      {/* Team Statistics */}
+      {teamMembers.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Members</p>
+                  <p className="text-2xl font-bold">{teamMembers.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <User className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active</p>
+                  <p className="text-2xl font-bold text-green-600">{teamStats.active}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Briefcase className="h-5 w-5 text-orange-600" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Inactive</p>
+                  <p className="text-2xl font-bold text-orange-600">{teamStats.inactive}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Avg Rate/Day</p>
+                  <p className="text-2xl font-bold text-purple-600">฿{teamStats.avgRate.toLocaleString()}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -432,16 +527,11 @@ export default function TeamPage() {
       <Card>
         <CardContent className="p-0">
           {teamMembers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No team members found</h3>
-              <p className="text-muted-foreground mb-4">
-                {hasActiveFilters ? 'Try adjusting your filters' : 'Add your first team member to get started'}
-              </p>
-              <Button onClick={() => setShowDrawer(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Member
-              </Button>
+            <div className="p-6">
+              <QuickStartGuide 
+                onAddMember={() => setShowDrawer(true)}
+                onImportCSV={() => setShowImportDialog(true)}
+              />
             </div>
           ) : (
             <>
@@ -596,6 +686,19 @@ export default function TeamPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Action Button */}
+      {teamMembers.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            onClick={() => setShowDrawer(true)}
+            size="lg"
+            className="rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <UserPlus className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

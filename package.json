@@ -12,7 +12,9 @@
     "db:migrate": "tsx scripts/migrate-database.ts",
     "db:seed": "tsx scripts/seed-database.ts",
     "supabase:types": "supabase gen types typescript --project-id vhgwqyholtebgldufppi > lib/supabase-types.ts",
-    "supabase:reset": "supabase db reset --project-ref vhgwqyholtebgldufppi"
+    "supabase:reset": "supabase db reset --project-ref vhgwqyholtebgldufppi",
+    "supabase:migrate": "node scripts/run-supabase-migrations.js",
+    "supabase:guide": "node scripts/supabase-migrate.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -51,7 +53,7 @@
     "eslint": "^9.34.0",
     "eslint-config-next": "^15.5.2",
     "postcss": "^8",
-    "supabase": "^1.200.3",
+    "supabase": "^1.226.4",
     "tailwindcss": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.6.2",

@@ -44,6 +44,7 @@ interface Project {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteProject, setDeleteProject] = useState<Project | null>(null)
 
@@ -53,12 +54,17 @@ export default function ProjectsPage() {
 
   async function fetchProjects() {
     try {
-      const response = await fetch('/api/projects')
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      const response = await fetch('/api/projects', { signal: controller.signal, cache: 'no-store' })
+      clearTimeout(timeout)
       if (!response.ok) throw new Error('Failed to fetch projects')
       const data = await response.json()
       setProjects(data)
+      setError(null)
     } catch (error) {
       console.error('Error fetching projects:', error)
+      setError('Unable to load projects. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -105,6 +111,19 @@ export default function ProjectsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-gray-600">Loading projects...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-lg text-red-600 mb-2">{error}</div>
+            <div className="text-sm text-gray-500">If the problem persists, contact the administrator.</div>
+          </div>
         </div>
       </div>
     )

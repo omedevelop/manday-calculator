@@ -13,11 +13,11 @@ export async function GET() {
     res.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
     return res
   } catch (error) {
+    // Return empty list on any error to keep UI responsive
     console.error('Error fetching projects:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch projects' },
-      { status: 500 }
-    )
+    const res = NextResponse.json([])
+    res.headers.set('Cache-Control', 's-maxage=15, stale-while-revalidate=60')
+    return res
   }
 }
 

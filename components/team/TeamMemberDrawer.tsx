@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, User, Briefcase, DollarSign, Info } from 'lucide-react'
 import { TeamMemberCreateSchema, TeamMemberUpdateSchema, type TeamMemberCreate, type LevelType } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
@@ -146,7 +146,7 @@ export function TeamMemberDrawer({
         ...prev,
         roleId: value,
         roleName: selectedRole?.name || '',
-        level: '' // Reset level when role changes
+        level: ''
       }))
     }
   }
@@ -215,7 +215,6 @@ export function TeamMemberDrawer({
       } else {
         const error = await response.json()
         console.error('Save failed:', error)
-        // Handle specific errors if needed
       }
     } catch (error) {
       console.error('Error saving team member:', error)
@@ -230,26 +229,38 @@ export function TeamMemberDrawer({
 
   const isFormValid = formData.name && formData.roleName && formData.level && formData.defaultRatePerDay
 
+  // Get suggested rate from rate card
+  const suggestedRate = formData.roleId && formData.level 
+    ? rateCardRoles.find(r => r.id === formData.roleId)?.tiers.find(t => t.level === formData.level && t.active)?.pricePerDay
+    : null
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {member ? 'Edit Team Member' : 'Add Team Member'}
+          <DialogTitle className="flex items-center space-x-2">
+            <User className="h-5 w-5" />
+            <span>{member ? 'Edit Team Member' : 'Add Team Member'}</span>
           </DialogTitle>
           <DialogDescription>
-            {member ? 'Update team member information.' : 'Add a new team member to your library.'}
+            {member 
+              ? 'Update team member information and settings.' 
+              : 'Add a new team member to your library. Fill in the required information below.'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-6 py-4">
           {/* Name */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Name *</label>
+            <label className="text-sm font-medium flex items-center">
+              <User className="h-4 w-4 mr-2" />
+              Full Name *
+            </label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Full name"
+              placeholder="Enter full name (e.g., John Doe)"
               className={errors.name ? 'border-red-500' : ''}
             />
             {errors.name && (
@@ -262,21 +273,30 @@ export function TeamMemberDrawer({
 
           {/* Role */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Role *</label>
+            <label className="text-sm font-medium flex items-center">
+              <Briefcase className="h-4 w-4 mr-2" />
+              Role *
+            </label>
             <Select 
               value={customRole ? 'custom' : formData.roleId} 
               onValueChange={handleRoleChange}
             >
               <SelectTrigger className={errors.roleName ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select role" />
+                <SelectValue placeholder="Select a role from rate card or create custom" />
               </SelectTrigger>
               <SelectContent>
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  Rate Card Roles
+                </div>
                 {rateCardRoles.map((role) => (
                   <SelectItem key={role.id} value={role.id}>
                     {role.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="custom">Custom role...</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  Custom Role
+                </div>
+                <SelectItem value="custom">Create custom role...</SelectItem>
               </SelectContent>
             </Select>
             
@@ -284,7 +304,7 @@ export function TeamMemberDrawer({
               <Input
                 value={formData.roleName}
                 onChange={(e) => setFormData(prev => ({ ...prev, roleName: e.target.value }))}
-                placeholder="Enter custom role name"
+                placeholder="Enter custom role name (e.g., Senior Frontend Developer)"
                 className={errors.roleName ? 'border-red-500' : ''}
               />
             )}
@@ -299,21 +319,27 @@ export function TeamMemberDrawer({
 
           {/* Level */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Level *</label>
+            <label className="text-sm font-medium">Experience Level *</label>
             <Select 
               value={formData.level} 
               onValueChange={(value: LevelType) => setFormData(prev => ({ ...prev, level: value }))}
             >
               <SelectTrigger className={errors.level ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select level" />
+                <SelectValue placeholder="Select experience level" />
               </SelectTrigger>
               <SelectContent>
                 {availableLevels.map((level) => (
                   <SelectItem key={level} value={level}>
-                    {level.replace('_', ' ')}
+                    <div className="flex items-center space-x-2">
+                      <span>{level.replace('_', ' ')}</span>
+                      {formData.roleId && rateCardRoles.find(r => r.id === formData.roleId)?.tiers.find(t => t.level === level && t.active) && (
+                        <Badge variant="outline" className="text-xs">
+                          ฿{rateCardRoles.find(r => r.id === formData.roleId)?.tiers.find(t => t.level === level && t.active)?.pricePerDay.toLocaleString()}
+                        </Badge>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
-                {/* Show all levels if custom role or no specific role selected */}
                 {(customRole || !formData.roleId) && 
                   ['TEAM_LEAD', 'SENIOR', 'JUNIOR'].filter(l => !availableLevels.includes(l as LevelType)).map((level) => (
                     <SelectItem key={level} value={level}>
@@ -324,11 +350,10 @@ export function TeamMemberDrawer({
               </SelectContent>
             </Select>
             
-            {/* Show warning if level not available in rate card */}
             {formData.roleId && formData.level && !availableLevels.includes(formData.level) && (
-              <div className="flex items-center space-x-2 text-sm text-amber-600">
-                <AlertCircle className="h-4 w-4" />
-                <span>Custom rate - level not available in rate card</span>
+              <div className="flex items-center space-x-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                <Info className="h-4 w-4" />
+                <span>Custom rate - this level is not available in the rate card</span>
               </div>
             )}
             
@@ -342,15 +367,38 @@ export function TeamMemberDrawer({
 
           {/* Default Rate */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Default Rate per Day (THB) *</label>
-            <Input
-              type="number"
-              value={formData.defaultRatePerDay}
-              onChange={(e) => setFormData(prev => ({ ...prev, defaultRatePerDay: e.target.value }))}
-              placeholder="2500"
-              min="1"
-              className={errors.defaultRatePerDay ? 'border-red-500' : ''}
-            />
+            <label className="text-sm font-medium flex items-center">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Default Rate per Day (THB) *
+            </label>
+            <div className="relative">
+              <Input
+                type="number"
+                value={formData.defaultRatePerDay}
+                onChange={(e) => setFormData(prev => ({ ...prev, defaultRatePerDay: e.target.value }))}
+                placeholder="2500"
+                min="1"
+                className={errors.defaultRatePerDay ? 'border-red-500' : ''}
+              />
+              {suggestedRate && suggestedRate.toString() !== formData.defaultRatePerDay && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFormData(prev => ({ ...prev, defaultRatePerDay: suggestedRate.toString() }))}
+                    className="h-6 px-2 text-xs"
+                  >
+                    Use ฿{suggestedRate.toLocaleString()}
+                  </Button>
+                </div>
+              )}
+            </div>
+            {suggestedRate && (
+              <p className="text-xs text-muted-foreground">
+                Suggested rate from rate card: ฿{suggestedRate.toLocaleString()}
+              </p>
+            )}
             {errors.defaultRatePerDay && (
               <p className="text-sm text-red-500 flex items-center">
                 <AlertCircle className="h-4 w-4 mr-1" />
@@ -370,10 +418,23 @@ export function TeamMemberDrawer({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="ACTIVE">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Active</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="INACTIVE">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span>Inactive</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Active members can be assigned to projects. Inactive members are hidden from project assignments.
+            </p>
           </div>
 
           {/* Notes */}
@@ -382,21 +443,25 @@ export function TeamMemberDrawer({
             <Input
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="Additional notes or comments"
+              placeholder="Additional notes, skills, or comments (optional)"
             />
+            <p className="text-xs text-muted-foreground">
+              Add any relevant information about this team member's skills, experience, or specializations.
+            </p>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={loading}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleCancel} disabled={loading} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={!isFormValid || loading}
+            className="w-full sm:w-auto"
           >
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {member ? 'Update' : 'Add'} Member
+            {member ? 'Update' : 'Add'} Team Member
           </Button>
         </DialogFooter>
       </DialogContent>

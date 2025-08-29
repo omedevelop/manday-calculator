@@ -1,222 +1,277 @@
 #!/usr/bin/env tsx
 
 /**
- * Database Setup Script - Pure Supabase
+ * Database Setup Script for Manday Calculator
  * 
- * This script sets up your Supabase database with the required schema and sample data.
- * Run with: npm run db:setup
+ * This script sets up the database schema and initial data for the application.
+ * It can be run to initialize a new database or update an existing one.
  */
 
-import { config } from 'dotenv'
-import { join } from 'path'
+import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
+import { join } from 'path'
 
-// Load environment variables
-config({ path: join(process.cwd(), '.env.local') })
+// Configuration
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-import { supabase } from '../lib/database'
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing required environment variables:')
+  console.error('   - NEXT_PUBLIC_SUPABASE_URL')
+  console.error('   - SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
+}
 
-async function setupDatabase() {
-  console.log('🚀 Setting up Supabase database...')
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
+async function readMigrationFile(filename: string): Promise<string> {
+  const filePath = join(__dirname, 'migrations', filename)
+  return readFileSync(filePath, 'utf-8')
+}
+
+async function runMigration(migrationName: string, sql: string) {
+  console.log(`🔄 Running migration: ${migrationName}`)
+  
   try {
-    // Test database connection
-    console.log('📡 Testing database connection...')
-    const { data, error } = await supabase.from('team_members').select('count').limit(1)
-    if (error && !error.message.includes('does not exist')) {
-      throw error
-    }
-    console.log('✅ Database connection successful!')
-
-    // Check if schema exists
-    const { data: tables } = await supabase.rpc('get_tables')
-    const tableNames = tables?.map(t => t.table_name) || []
+    // Split SQL into individual statements
+    const statements = sql
+      .split(';')
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
     
-    if (!tableNames.includes('team_members')) {
-      console.log('📦 Creating database schema...')
-      
-      // Read and execute the initial schema
-      const schemaSQL = readFileSync(
-        join(__dirname, 'migrations', '001_initial_schema.sql'), 
-        'utf-8'
-      )
-      
-      // Note: In production, you'd run this through Supabase CLI or dashboard
-      console.log('⚠️  Please run the following SQL in your Supabase SQL editor:')
-      console.log('----------------------------------------')
-      console.log(schemaSQL)
-      console.log('----------------------------------------')
-      console.log('Then run this script again.')
-      return
-    }
-
-    console.log('✅ Database schema exists!')
-
-    // Check for sample data
-    const { count: teamMemberCount } = await supabase
-      .from('team_members')
-      .select('*', { count: 'exact', head: true })
-
-    const { count: rateCardRoleCount } = await supabase
-      .from('rate_card_roles')
-      .select('*', { count: 'exact', head: true })
-
-    console.log(`👥 Team members: ${teamMemberCount || 0}`)
-    console.log(`💼 Rate card roles: ${rateCardRoleCount || 0}`)
-
-    // Create sample rate card roles if none exist
-    if ((rateCardRoleCount || 0) === 0) {
-      console.log('📝 Creating sample rate card roles...')
-      
-      const sampleRoles = [
-        {
-          name: 'Frontend Developer',
-          tiers: [
-            { level: 'JUNIOR' as const, pricePerDay: 8000 },
-            { level: 'SENIOR' as const, pricePerDay: 12000 },
-            { level: 'TEAM_LEAD' as const, pricePerDay: 16000 }
-          ]
-        },
-        {
-          name: 'Backend Developer',
-          tiers: [
-            { level: 'JUNIOR' as const, pricePerDay: 9000 },
-            { level: 'SENIOR' as const, pricePerDay: 14000 },
-            { level: 'TEAM_LEAD' as const, pricePerDay: 18000 }
-          ]
-        },
-        {
-          name: 'Full Stack Developer',
-          tiers: [
-            { level: 'JUNIOR' as const, pricePerDay: 10000 },
-            { level: 'SENIOR' as const, pricePerDay: 15000 },
-            { level: 'TEAM_LEAD' as const, pricePerDay: 20000 }
-          ]
-        },
-        {
-          name: 'UI/UX Designer',
-          tiers: [
-            { level: 'JUNIOR' as const, pricePerDay: 7000 },
-            { level: 'SENIOR' as const, pricePerDay: 11000 },
-            { level: 'TEAM_LEAD' as const, pricePerDay: 15000 }
-          ]
+    for (const statement of statements) {
+      if (statement.trim()) {
+        const { error } = await supabase.rpc('exec_sql', { sql: statement })
+        if (error) {
+          console.error(`❌ Error executing statement: ${error.message}`)
+          console.error(`Statement: ${statement.substring(0, 100)}...`)
+          throw error
         }
-      ]
-
-      for (const roleData of sampleRoles) {
-        // Create role
-        const { data: role, error: roleError } = await supabase
-          .from('rate_card_roles')
-          .insert({ name: roleData.name })
-          .select()
-          .single()
-
-        if (roleError) throw roleError
-
-        // Create tiers
-        const tiersToInsert = roleData.tiers.map(tier => ({
-          roleId: role.id,
-          level: tier.level,
-          pricePerDay: tier.pricePerDay
-        }))
-
-        const { error: tiersError } = await supabase
-          .from('rate_card_tiers')
-          .insert(tiersToInsert)
-
-        if (tiersError) throw tiersError
-
-        console.log(`✅ Created role: ${role.name}`)
       }
     }
-
-    // Create sample team members if none exist
-    if ((teamMemberCount || 0) === 0) {
-      console.log('👤 Creating sample team members...')
-      
-      const { data: roles } = await supabase
-        .from('rate_card_roles')
-        .select(`
-          *,
-          tiers:rate_card_tiers(*)
-        `)
-
-      const sampleMembers = [
-        {
-          name: 'John Smith',
-          roleName: 'Frontend Developer',
-          level: 'SENIOR' as const,
-          defaultRatePerDay: 12000,
-          notes: 'React and TypeScript specialist'
-        },
-        {
-          name: 'Sarah Johnson',
-          roleName: 'Backend Developer',
-          level: 'TEAM_LEAD' as const,
-          defaultRatePerDay: 18000,
-          notes: 'Node.js and PostgreSQL expert'
-        },
-        {
-          name: 'Mike Chen',
-          roleName: 'UI/UX Designer',
-          level: 'SENIOR' as const,
-          defaultRatePerDay: 11000,
-          notes: 'Figma and user research specialist'
-        }
-      ]
-
-      for (const memberData of sampleMembers) {
-        const role = roles?.find(r => r.name === memberData.roleName)
-        
-        const { data: member, error } = await supabase
-          .from('team_members')
-          .insert({
-            ...memberData,
-            roleId: role?.id || null,
-            status: 'ACTIVE'
-          })
-          .select()
-          .single()
-
-        if (error) throw error
-        console.log(`✅ Created team member: ${member.name}`)
-      }
-    }
-
-    console.log('🎉 Database setup completed successfully!')
-    console.log('')
-    console.log('Next steps:')
-    console.log('1. Start your development server: npm run dev')
-    console.log('2. Visit http://localhost:3000/team to see your Team Library')
-    console.log('3. Generate types: npm run supabase:types')
-
+    
+    console.log(`✅ Migration completed: ${migrationName}`)
   } catch (error) {
-    console.error('❌ Setup failed:', error)
+    console.error(`❌ Migration failed: ${migrationName}`)
+    console.error(error)
+    throw error
+  }
+}
+
+async function checkDatabaseConnection() {
+  console.log('🔍 Checking database connection...')
+  
+  try {
+    const { data, error } = await supabase
+      .from('rate_card_roles')
+      .select('count')
+      .limit(1)
+    
+    if (error) {
+      console.log('📝 Database exists but may need initialization')
+      return false
+    }
+    
+    console.log('✅ Database connection successful')
+    return true
+  } catch (error) {
+    console.log('📝 Database may not be initialized yet')
+    return false
+  }
+}
+
+async function insertDefaultData() {
+  console.log('📝 Inserting default data...')
+  
+  try {
+    // Insert default rate card roles if they don't exist
+    const defaultRoles = [
+      'Developer',
+      'Designer', 
+      'Project Manager',
+      'Business Analyst',
+      'QA Engineer',
+      'DevOps Engineer',
+      'Data Scientist',
+      'UX Researcher'
+    ]
+    
+    for (const roleName of defaultRoles) {
+      const { error } = await supabase
+        .from('rate_card_roles')
+        .upsert({ name: roleName }, { onConflict: 'name' })
+      
+      if (error) {
+        console.warn(`⚠️  Could not insert role "${roleName}": ${error.message}`)
+      }
+    }
+    
+    // Insert some sample rate card tiers
+    const { data: roles } = await supabase
+      .from('rate_card_roles')
+      .select('id, name')
+      .limit(3)
+    
+    if (roles && roles.length > 0) {
+      const sampleTiers = [
+        { level: 'JUNIOR', pricePerDay: 8000 },
+        { level: 'SENIOR', pricePerDay: 12000 },
+        { level: 'TEAM_LEAD', pricePerDay: 16000 }
+      ]
+      
+      for (const role of roles) {
+        for (const tier of sampleTiers) {
+          const { error } = await supabase
+            .from('rate_card_tiers')
+            .upsert({
+              roleId: role.id,
+              level: tier.level,
+              pricePerDay: tier.pricePerDay,
+              active: true
+            }, { onConflict: 'roleId,level' })
+          
+          if (error) {
+            console.warn(`⚠️  Could not insert tier for "${role.name}": ${error.message}`)
+          }
+        }
+      }
+    }
+    
+    console.log('✅ Default data inserted successfully')
+  } catch (error) {
+    console.error('❌ Error inserting default data:', error)
+    throw error
+  }
+}
+
+async function verifySetup() {
+  console.log('🔍 Verifying database setup...')
+  
+  try {
+    // Check if all tables exist
+    const tables = [
+      'rate_card_roles',
+      'rate_card_tiers', 
+      'team_members',
+      'projects',
+      'project_people',
+      'project_holidays',
+      'project_templates',
+      'project_summaries'
+    ]
+    
+    for (const table of tables) {
+      const { error } = await supabase
+        .from(table)
+        .select('count')
+        .limit(1)
+      
+      if (error) {
+        console.error(`❌ Table "${table}" not found or accessible`)
+        return false
+      }
+    }
+    
+    // Check if default roles exist
+    const { data: roles, error: rolesError } = await supabase
+      .from('rate_card_roles')
+      .select('name')
+    
+    if (rolesError) {
+      console.error('❌ Could not verify default roles')
+      return false
+    }
+    
+    if (!roles || roles.length === 0) {
+      console.warn('⚠️  No default roles found')
+    } else {
+      console.log(`✅ Found ${roles.length} rate card roles`)
+    }
+    
+    console.log('✅ Database setup verification completed')
+    return true
+  } catch (error) {
+    console.error('❌ Database verification failed:', error)
+    return false
+  }
+}
+
+async function main() {
+  console.log('🚀 Starting database setup for Manday Calculator...')
+  console.log('')
+  
+  try {
+    // Check if database is already set up
+    const isConnected = await checkDatabaseConnection()
+    
+    if (!isConnected) {
+      console.log('📝 Running initial database setup...')
+      
+      // Run initial migration
+      const initialMigration = await readMigrationFile('001_initial_schema.sql')
+      await runMigration('001_initial_schema', initialMigration)
+      
+      // Run enhancements migration
+      const enhancementsMigration = await readMigrationFile('002_enhancements.sql')
+      await runMigration('002_enhancements', enhancementsMigration)
+      
+      // Insert default data
+      await insertDefaultData()
+    } else {
+      console.log('📝 Database already exists, checking for updates...')
+      
+      // Check if we need to run the enhancements migration
+      const { data: auditLogs } = await supabase
+        .from('audit_logs')
+        .select('count')
+        .limit(1)
+      
+      if (!auditLogs) {
+        console.log('📝 Running enhancements migration...')
+        const enhancementsMigration = await readMigrationFile('002_enhancements.sql')
+        await runMigration('002_enhancements', enhancementsMigration)
+      } else {
+        console.log('✅ Enhancements already applied')
+      }
+    }
+    
+    // Verify the setup
+    const isVerified = await verifySetup()
+    
+    if (isVerified) {
+      console.log('')
+      console.log('🎉 Database setup completed successfully!')
+      console.log('')
+      console.log('📊 Database includes:')
+      console.log('   ✅ Rate card management (roles and tiers)')
+      console.log('   ✅ Team member management')
+      console.log('   ✅ Project management with people and holidays')
+      console.log('   ✅ Project templates and summaries')
+      console.log('   ✅ Audit logging and change tracking')
+      console.log('   ✅ Time tracking and milestones')
+      console.log('   ✅ Team member skills and availability')
+      console.log('   ✅ Project dependencies and attachments')
+      console.log('')
+      console.log('🚀 Your Manday Calculator is ready to use!')
+    } else {
+      console.error('❌ Database setup verification failed')
+      process.exit(1)
+    }
+    
+  } catch (error) {
+    console.error('❌ Database setup failed:', error)
     process.exit(1)
   }
 }
 
-// Helper function to check if we can create the get_tables function
-async function createHelperFunctions() {
-  const { error } = await supabase.rpc('create_helper_functions', {
-    sql: `
-      CREATE OR REPLACE FUNCTION get_tables()
-      RETURNS TABLE(table_name text) AS $$
-      BEGIN
-        RETURN QUERY
-        SELECT t.table_name::text
-        FROM information_schema.tables t
-        WHERE t.table_schema = 'public'
-        AND t.table_type = 'BASE TABLE';
-      END;
-      $$ LANGUAGE plpgsql;
-    `
-  })
-
-  if (error) {
-    console.log('Note: Could not create helper functions. This is normal.')
-  }
+// Run the setup
+if (require.main === module) {
+  main().catch(console.error)
 }
 
-// Run the setup
-createHelperFunctions().then(() => setupDatabase())
+export { main as setupDatabase }

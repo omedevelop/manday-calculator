@@ -55,14 +55,26 @@ export default function NewProjectPage() {
   const watchCurrency = watch('currencyCode')
   const watchTaxEnabled = watch('taxEnabled')
   const watchPricingMode = watch('pricingMode')
+  const watchWorkingWeek = watch('workingWeek')
 
   // Update currency symbol when currency code changes
   const handleCurrencyChange = (currencyCode: string) => {
+    console.log('Currency changed to:', currencyCode) // Debug log
     const currency = currencies.find(c => c.code === currencyCode)
     if (currency) {
       setValue('currencyCode', currencyCode)
       setValue('currencySymbol', currency.symbol)
     }
+  }
+
+  const handlePricingModeChange = (value: string) => {
+    console.log('Pricing mode changed to:', value) // Debug log
+    setValue('pricingMode', value as any, { shouldDirty: true })
+  }
+
+  const handleWorkingWeekChange = (value: string) => {
+    console.log('Working week changed to:', value) // Debug log
+    setValue('workingWeek', value as any, { shouldDirty: true })
   }
 
   const onSubmit = async (data: ProjectFormData) => {
@@ -94,6 +106,14 @@ export default function NewProjectPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Debug Information */}
+      <div className="mb-4 p-4 bg-gray-100 rounded-lg">
+        <h3 className="font-semibold mb-2">Debug Info:</h3>
+        <p>Currency: {watchCurrency}</p>
+        <p>Pricing Mode: {watchPricingMode}</p>
+        <p>Working Week: {watchWorkingWeek}</p>
+      </div>
+
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link href="/projects">
@@ -146,7 +166,7 @@ export default function NewProjectPage() {
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency</Label>
                 <Select value={watchCurrency} onValueChange={handleCurrencyChange}>
-                  <SelectTrigger>
+                  <SelectTrigger id="currency">
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
@@ -175,8 +195,8 @@ export default function NewProjectPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="workingWeek">Working Week</Label>
-                <Select value={watch('workingWeek')} onValueChange={(value) => setValue('workingWeek', value as any, { shouldDirty: true })}>
-                  <SelectTrigger>
+                <Select value={watchWorkingWeek} onValueChange={handleWorkingWeekChange}>
+                  <SelectTrigger id="workingWeek">
                     <SelectValue placeholder="Select working week" />
                   </SelectTrigger>
                   <SelectContent>
@@ -200,8 +220,8 @@ export default function NewProjectPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="pricingMode">Pricing Mode</Label>
-                <Select value={watchPricingMode} onValueChange={(value) => setValue('pricingMode', value as any, { shouldDirty: true })}>
-                  <SelectTrigger>
+                <Select value={watchPricingMode} onValueChange={handlePricingModeChange}>
+                  <SelectTrigger id="pricingMode">
                     <SelectValue placeholder="Select pricing mode" />
                   </SelectTrigger>
                   <SelectContent>

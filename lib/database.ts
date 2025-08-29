@@ -239,6 +239,60 @@ export async function getRateCardRoles() {
   return data || []
 }
 
+export async function createRateCardRole(name: string) {
+  const { data, error } = await supabase
+    .from('rate_card_roles')
+    .insert({ name })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateRateCardRole(id: string, updates: { name?: string }) {
+  const { data, error } = await supabase
+    .from('rate_card_roles')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteRateCardRole(id: string) {
+  // Check if role is referenced by team members or project people
+  const { data: teamMembers, error: teamError } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('roleId', id)
+    .limit(1)
+
+  if (teamError) throw teamError
+
+  const { data: projectPeople, error: projectError } = await supabase
+    .from('project_people')
+    .select('id')
+    .eq('roleId', id)
+    .limit(1)
+
+  if (projectError) throw projectError
+
+  if ((teamMembers && teamMembers.length > 0) || (projectPeople && projectPeople.length > 0)) {
+    throw new Error('Cannot delete rate card role - referenced by team members or projects')
+  }
+
+  const { error } = await supabase
+    .from('rate_card_roles')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return true
+}
+
 // Active team members for library selection
 export async function getActiveTeamMembers() {
   const { data, error } = await supabase
@@ -254,7 +308,7 @@ export async function getActiveTeamMembers() {
   return data || []
 }
 
-// Projects Operations (migrated from Prisma)
+// Projects Operations
 export async function getProjects() {
   const { data, error } = await supabase
     .from('projects')
@@ -373,6 +427,142 @@ export async function upsertProjectSummary(summaryData: Database['public']['Tabl
 
   if (error) throw error
   return data
+}
+
+// Project People Operations
+export async function createProjectPerson(personData: Database['public']['Tables']['project_people']['Insert']) {
+  const { data, error } = await supabase
+    .from('project_people')
+    .insert(personData)
+    .select(`
+      *,
+      teamMember:team_members(*),
+      role:rate_card_roles(*)
+    `)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProjectPerson(id: string, personData: Database['public']['Tables']['project_people']['Update']) {
+  const { data, error } = await supabase
+    .from('project_people')
+    .update(personData)
+    .eq('id', id)
+    .select(`
+      *,
+      teamMember:team_members(*),
+      role:rate_card_roles(*)
+    `)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteProjectPerson(id: string) {
+  const { error } = await supabase
+    .from('project_people')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return true
+}
+
+export async function getProjectPeople(projectId: string) {
+  const { data, error } = await supabase
+    .from('project_people')
+    .select(`
+      *,
+      teamMember:team_members(*),
+      role:rate_card_roles(*)
+    `)
+    .eq('projectId', projectId)
+    .order('createdAt')
+
+  if (error) throw error
+  return data || []
+}
+
+// Project Holidays Operations
+export async function createProjectHoliday(holidayData: Database['public']['Tables']['project_holidays']['Insert']) {
+  const { data, error } = await supabase
+    .from('project_holidays')
+    .insert(holidayData)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProjectHoliday(id: string, holidayData: Database['public']['Tables']['project_holidays']['Update']) {
+  const { data, error } = await supabase
+    .from('project_holidays')
+    .update(holidayData)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteProjectHoliday(id: string) {
+  const { error } = await supabase
+    .from('project_holidays')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return true
+}
+
+export async function getProjectHolidays(projectId: string) {
+  const { data, error } = await supabase
+    .from('project_holidays')
+    .select('*')
+    .eq('projectId', projectId)
+    .order('date')
+
+  if (error) throw error
+  return data || []
+}
+
+// Project Templates Operations
+export async function createProjectTemplate(templateData: Database['public']['Tables']['project_templates']['Insert']) {
+  const { data, error } = await supabase
+    .from('project_templates')
+    .insert(templateData)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProjectTemplate(id: string, templateData: Database['public']['Tables']['project_templates']['Update']) {
+  const { data, error } = await supabase
+    .from('project_templates')
+    .update(templateData)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteProjectTemplate(id: string) {
+  const { error } = await supabase
+    .from('project_templates')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return true
 }
 
 // Real-time subscriptions

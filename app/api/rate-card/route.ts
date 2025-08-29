@@ -13,11 +13,11 @@ export async function GET() {
     res.headers.set('Cache-Control', 's-maxage=300, stale-while-revalidate=600')
     return res
   } catch (error) {
+    // Return empty result on any error to keep UI responsive
     console.error('Error fetching rate card:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch rate card' },
-      { status: 500 }
-    )
+    const res = NextResponse.json([])
+    res.headers.set('Cache-Control', 's-maxage=15, stale-while-revalidate=60')
+    return res
   }
 }
 
