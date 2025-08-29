@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const runtime = 'nodejs'
 import { projectSchema } from '@/lib/validations'
 import { getProject, updateProject, deleteProject } from '@/lib/database'
 import { ZodError } from 'zod'

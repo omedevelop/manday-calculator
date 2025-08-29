@@ -3,7 +3,7 @@ import { getTeamMembers, createTeamMember } from '@/lib/database'
 import { TeamMemberCreateSchema, TeamQuerySchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 export const revalidate = 120
 
 export async function GET(request: NextRequest) {

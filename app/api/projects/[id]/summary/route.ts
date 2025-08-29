@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 import { calculateTotals } from '@/lib/calculations'
 import { getProjectSummary, upsertProjectSummary } from '@/lib/database'
 

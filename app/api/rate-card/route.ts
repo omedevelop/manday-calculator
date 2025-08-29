@@ -1,4 +1,6 @@
 export const revalidate = 300
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getRateCardRoles } from '@/lib/database'
 import { rateCardTierSchema } from '@/lib/validations'

@@ -175,7 +175,7 @@ export default function NewProjectPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="workingWeek">Working Week</Label>
-                <Select {...register('workingWeek')} onValueChange={(value) => setValue('workingWeek', value as any)}>
+                <Select value={watch('workingWeek')} onValueChange={(value) => setValue('workingWeek', value as any, { shouldDirty: true })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select working week" />
                   </SelectTrigger>
@@ -200,7 +200,7 @@ export default function NewProjectPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="pricingMode">Pricing Mode</Label>
-                <Select {...register('pricingMode')} onValueChange={(value) => setValue('pricingMode', value as any)}>
+                <Select value={watchPricingMode} onValueChange={(value) => setValue('pricingMode', value as any, { shouldDirty: true })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select pricing mode" />
                   </SelectTrigger>
@@ -269,8 +269,8 @@ export default function NewProjectPage() {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="taxEnabled"
-                  {...register('taxEnabled')}
-                  onCheckedChange={(checked) => setValue('taxEnabled', checked)}
+                  checked={watchTaxEnabled}
+                  onCheckedChange={(checked) => setValue('taxEnabled', checked, { shouldDirty: true })}
                 />
                 <Label htmlFor="taxEnabled">Enable tax calculation</Label>
               </div>
@@ -351,8 +351,8 @@ export default function NewProjectPage() {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="calendarMode"
-                  {...register('calendarMode')}
-                  onCheckedChange={(checked) => setValue('calendarMode', checked)}
+                  checked={!!watch('calendarMode')}
+                  onCheckedChange={(checked) => setValue('calendarMode', checked, { shouldDirty: true })}
                 />
                 <Label htmlFor="calendarMode">Use calendar mode (with specific dates)</Label>
               </div>

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "env:pull": "vercel env pull .env.local",
     "db:setup": "tsx scripts/setup-database.ts",
     "db:migrate": "tsx scripts/migrate-database.ts",
     "db:seed": "tsx scripts/seed-database.ts",

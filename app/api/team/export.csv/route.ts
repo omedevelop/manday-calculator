@@ -4,6 +4,7 @@ import { TeamQuerySchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // Constants for CSV export
 const MAX_EXPORT_SIZE = 10000 // Maximum number of records to export

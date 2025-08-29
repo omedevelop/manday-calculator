@@ -5,27 +5,40 @@ import type { Database } from './supabase-types'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl) {
-  console.error('NEXT_PUBLIC_SUPABASE_URL is not set in environment variables')
-  process.exit(1)
-}
-
-if (!supabaseServiceKey) {
-  console.error('SUPABASE_SERVICE_ROLE_KEY is not set in environment variables')
-  process.exit(1)
-}
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+// Soft-check environment variables to avoid breaking builds when values are injected at runtime.
+function getEnvOrWarn(name: string, fallback?: string): string | undefined {
+  const raw = process.env[name]
+  const value = raw && raw.trim() !== '' ? raw : fallback
+  if (!value) {
+    // eslint-disable-next-line no-console
+    console.warn(`[env] ${name} is not set. Some server operations may fail at runtime.`)
   }
-})
+  return value
+}
+
+// Prefer service role key when available; fall back to anon for read-only operations to enable local builds.
+const serverKey = (supabaseServiceKey && supabaseServiceKey.trim() !== '')
+  ? supabaseServiceKey
+  : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
+
+export const supabase = createClient<Database>(
+  getEnvOrWarn('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl) || '',
+  getEnvOrWarn('SUPABASE_SERVICE_ROLE_KEY', serverKey) || '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 // Client-side Supabase for frontend use
 export function createClientSupabase() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createClient<Database>(supabaseUrl!, supabaseAnonKey)
+  return createClient<Database>(
+    getEnvOrWarn('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl) || '',
+    getEnvOrWarn('NEXT_PUBLIC_SUPABASE_ANON_KEY', supabaseAnonKey) || ''
+  )
 }
 
 // Type definitions for better TypeScript support

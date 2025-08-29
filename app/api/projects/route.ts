@@ -1,4 +1,5 @@
 export const revalidate = 60
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { projectSchema } from '@/lib/validations'
 import { calculateTotals } from '@/lib/calculations'
