@@ -1,10 +1,14 @@
 export const revalidate = 60
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+// import { prisma } from '@/lib/db' // TODO: Migrate to Supabase
 import { projectSchema } from '@/lib/validations'
 import { calculateTotals } from '@/lib/calculations'
 
 export async function GET() {
+  // TODO: Migrate projects to Supabase
+  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
+  
+  /*
   try {
     const projects = await prisma.project.findMany({
       include: {
@@ -35,6 +39,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // TODO: Migrate projects to Supabase
+  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
+  
+  /*
   try {
     const body = await request.json()
     
@@ -120,4 +128,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+  */
 }

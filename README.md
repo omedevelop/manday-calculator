@@ -1,6 +1,6 @@
 # Manday Calculator
 
-A comprehensive internal web application for calculating project costs, pricing, and team allocation. Built with Next.js 14, TypeScript, and Prisma.
+A comprehensive internal web application for calculating project costs, pricing, and team allocation. Built with Next.js 14, TypeScript, and Supabase.
 
 ## Features
 
@@ -16,17 +16,19 @@ A comprehensive internal web application for calculating project costs, pricing,
 ### Technical Features
 - **Edge Runtime**: Fast GET operations for improved performance
 - **Node Runtime**: Heavy processing for imports and exports
+- **Real-time Updates**: Live data synchronization with Supabase subscriptions
 - **Real-time Calculations**: Server-side calculation engine with Decimal.js precision
 - **Form Validation**: Zod schema validation for all inputs
 - **Responsive UI**: Modern interface built with Tailwind CSS and shadcn/ui
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: PostgreSQL with Supabase
 
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
 - **UI Components**: shadcn/ui, Radix UI, Lucide React icons
-- **Backend**: Next.js API routes, Prisma ORM
-- **Database**: PostgreSQL (Vercel Postgres/Neon)
+- **Backend**: Next.js API routes, Supabase client
+- **Database**: PostgreSQL with Supabase (Pure Supabase implementation)
+- **Real-time**: Supabase subscriptions for live updates
 - **Validation**: Zod schemas
 - **Calculations**: Decimal.js for financial precision
 - **Deployment**: Vercel
@@ -34,46 +36,59 @@ A comprehensive internal web application for calculating project costs, pricing,
 ## Prerequisites
 
 - Node.js 18+ 
-- PostgreSQL database (Vercel Postgres or Neon recommended)
+- Supabase account and project
 - npm or yarn package manager
+- Vercel CLI (for deployment)
+- Supabase CLI (for type generation and database management)
 
 ## Installation
 
-1. **Clone the repository**
+1. **Install CLI tools**
+   ```bash
+   # Install Vercel CLI globally
+   npm install -g vercel
+   
+   # Install Supabase CLI globally
+   npm install -g supabase
+   
+   # Verify installations
+   vercel --version
+   supabase --version
+   ```
+
+2. **Clone the repository**
    ```bash
    git clone <repository-url>
    cd manday-calculator
    ```
 
-2. **Install dependencies**
+3. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+4. **Set up environment variables**
    ```bash
    cp env.example .env.local
    ```
    
-   Edit `.env.local` and add your database URL:
+   Edit `.env.local` and add your Supabase credentials:
    ```env
-   DATABASE_URL="postgresql://username:password@host:port/database?pgbouncer=true&connection_limit=1&pool_timeout=20"
-   NEXT_PUBLIC_APP_NAME="Manday Calculator"
+   NEXT_PUBLIC_SUPABASE_URL="https://your-project-ref.supabase.co"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+   SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
    ```
 
-4. **Set up the database**
+5. **Set up the database**
    ```bash
-   # Generate Prisma client
-   npm run db:generate
-   
-   # Push schema to database
-   npm run db:push
+   # Create database schema in Supabase SQL Editor
+   # Copy and run the SQL from scripts/migrations/001_initial_schema.sql
    
    # Seed initial data
-   npm run db:seed
+   npm run db:setup
    ```
 
-5. **Start the development server**
+6. **Start the development server**
    ```bash
    npm run dev
    ```
@@ -82,22 +97,63 @@ A comprehensive internal web application for calculating project costs, pricing,
 
 ## Database Setup
 
-The application uses Prisma with PostgreSQL. The schema includes:
+The application uses Supabase with PostgreSQL. The schema includes:
 
-- **RateCardRole**: Project roles (Developer, Designer, etc.)
-- **RateCardTier**: Experience levels with daily rates
-- **TeamMember**: Team member information and default rates
-- **Project**: Project details and configuration
-- **ProjectPerson**: Team allocation within projects
-- **ProjectHoliday**: Holiday and calendar management
-- **ProjectSummary**: Calculated totals and metrics
+- **rate_card_roles**: Project roles (Developer, Designer, etc.)
+- **rate_card_tiers**: Experience levels with daily rates
+- **team_members**: Team member information and default rates
+- **projects**: Project details and configuration
+- **project_people**: Team allocation within projects
+- **project_holidays**: Holiday and calendar management
+- **project_summaries**: Calculated totals and metrics
+
+### Supabase Setup
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+2. **Get your credentials** from Project Settings → API
+3. **Run the SQL schema** in SQL Editor:
+   - Copy content from `scripts/migrations/001_initial_schema.sql`
+   - Paste and execute in Supabase SQL Editor
+4. **Seed sample data** by running `npm run db:setup`
+
+### CLI Usage
+
+#### Supabase CLI Commands
+```bash
+# Login to Supabase (required for type generation)
+supabase login
+
+# Generate TypeScript types from your Supabase project
+npm run supabase:types
+
+# Reset your Supabase database (careful!)
+npm run supabase:reset
+```
+
+#### Vercel CLI Commands
+```bash
+# Login to Vercel
+vercel login
+
+# Link your local project to a Vercel project
+vercel link
+
+# Pull environment variables from Vercel
+vercel env pull .env.local
+
+# Deploy to production
+vercel --prod
+
+# Deploy to preview
+vercel
+```
 
 ### Initial Data
 
 The seed script creates:
-- Default roles: Developer, Designer, Project Manager, QA Engineer
-- Rate tiers: Team Lead (฿4,500), Senior (฿3,500), Junior (฿2,500)
-- Sample team members
+- **4 Rate Card Roles**: Frontend Developer, Backend Developer, Full Stack Developer, UI/UX Designer
+- **12 Rate Card Tiers**: 3 levels (Junior, Senior, Team Lead) for each role
+- **3 Sample Team Members**: Alice (Backend Senior), Bob (Frontend Team Lead), Carol (UI/UX Senior)
 
 ## Usage
 
@@ -112,9 +168,13 @@ The seed script creates:
 - Visual indicators for different tiers
 
 ### Team Library
-- Add and manage team members
-- Set default rates and roles
-- Track member status (Active/Inactive)
+- **CRUD Operations**: Create, read, update, delete team members
+- **Search & Filter**: By name, role, level, status
+- **Sort & Pagination**: All columns sortable with pagination
+- **Bulk Actions**: Select multiple members for operations
+- **CSV Import/Export**: Bulk data management
+- **Real-time Updates**: Live data synchronization
+- **Calculator Integration**: Select members to prefill calculator rows
 
 ### Project Workspace
 - **Overview**: Project settings and day configuration
@@ -142,8 +202,13 @@ The seed script creates:
 - `PATCH /api/rate-card` - Update rate card tiers
 
 ### Team
-- `GET /api/team` - List team members
-- `POST /api/team` - Add team member
+- `GET /api/team` - List team members with search/filter/sort/pagination
+- `POST /api/team` - Create new team member
+- `PATCH /api/team/[id]` - Update team member
+- `DELETE /api/team/[id]` - Delete team member
+- `POST /api/team/bulk` - Bulk actions (activate/deactivate/delete)
+- `POST /api/team/import` - CSV import with dry-run preview
+- `GET /api/team/export.csv` - CSV export with current filters
 
 ## Development
 
@@ -158,13 +223,14 @@ The seed script creates:
 │   └── ui/                # shadcn/ui components
 ├── lib/                    # Utility functions
 │   ├── calculations.ts     # Core calculation engine
-│   ├── db.ts              # Database utilities
+│   ├── database.ts         # Supabase database functions
+│   ├── supabase-types.ts   # Generated Supabase types
 │   ├── types.ts            # TypeScript types
 │   ├── utils.ts            # Helper functions
 │   └── validations.ts      # Zod schemas
-├── prisma/                 # Database schema and migrations
-│   ├── schema.prisma       # Prisma schema
-│   └── seed.ts             # Database seed script
+├── scripts/                # Database scripts
+│   ├── migrations/         # SQL migration files
+│   └── setup-database.ts   # Database setup script
 └── package.json            # Dependencies and scripts
 ```
 
@@ -173,11 +239,39 @@ The seed script creates:
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:push` - Push schema to database
-- `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed database with initial data
-- `npm run db:studio` - Open Prisma Studio
+- `npm run db:setup` - Set up database schema and seed data
+- `npm run supabase:types` - Generate TypeScript types from Supabase
+- `npm run supabase:reset` - Reset Supabase database
+
+### CLI Troubleshooting
+
+#### Supabase CLI Issues
+```bash
+# If supabase command not found after global install
+npm list -g supabase
+
+# Alternative: Use npx instead of global install
+npx supabase login
+npx supabase gen types typescript --project-id your-project-id > lib/supabase-types.ts
+
+# If login fails, try clearing cache
+supabase logout
+supabase login
+```
+
+#### Vercel CLI Issues
+```bash
+# If vercel command not found after global install
+npm list -g vercel
+
+# Alternative: Use npx instead of global install
+npx vercel login
+npx vercel link
+npx vercel env pull .env.local
+
+# If deployment fails, check build logs
+vercel logs [deployment-url]
+```
 
 ## Testing
 
@@ -203,9 +297,10 @@ The application includes unit tests for the calculation engine covering:
    - Set environment variables in Vercel dashboard
 
 2. **Database Setup**
-   - Use Vercel Postgres or connect Neon database
-   - Set `DATABASE_URL` environment variable
-   - Run migrations: `npm run db:migrate`
+   - Create a Supabase project
+   - Set Supabase environment variables in Vercel dashboard
+   - Run SQL schema in Supabase SQL Editor
+   - Seed data: `npm run db:setup`
 
 3. **Deploy**
    - Vercel will automatically deploy on push to main branch
@@ -214,8 +309,9 @@ The application includes unit tests for the calculation engine covering:
 ### Environment Variables
 
 Required for production:
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXT_PUBLIC_APP_NAME`: Application name
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (for server-side operations)
 
 ### Security Headers
 
@@ -229,9 +325,10 @@ The application includes security headers:
 
 - **Edge Runtime**: Fast GET operations for read-heavy endpoints
 - **Node Runtime**: Heavy processing for calculations and exports
+- **Real-time Updates**: Supabase subscriptions for live data synchronization
 - **Database Indexes**: Optimized queries with proper indexing
-- **Connection Pooling**: Efficient database connection management
-- **Caching**: Optional 30-second cache for GET operations
+- **Connection Pooling**: Supabase handles connection pooling automatically
+- **Caching**: Optional caching for GET operations
 
 ## Contributing
 
@@ -255,9 +352,20 @@ For issues and questions:
 ## Roadmap
 
 Future enhancements:
-- User authentication and RBAC
-- Audit logging
-- Advanced reporting
-- Integration with external tools
-- Mobile application
-- Multi-currency support
+- **User authentication and RBAC** (using Supabase Auth)
+- **Audit logging** with Supabase triggers
+- **Advanced reporting** and analytics
+- **Project management features** (currently disabled, needs migration)
+- **Integration with external tools**
+- **Mobile application**
+- **Multi-currency support**
+- **Advanced real-time collaboration**
+
+## Migration Notes
+
+This application has been fully migrated from Prisma to Pure Supabase:
+- ✅ **Team Library**: Fully functional with real-time updates
+- ✅ **Rate Card Management**: Complete CRUD operations
+- ⚠️ **Project Management**: Temporarily disabled (needs migration to Supabase)
+- ✅ **CSV Import/Export**: Working with Supabase backend
+- ✅ **Real-time Features**: Live data synchronization implemented

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { calculateTotals } from '@/lib/calculations'
-// use runtime-safe coercion; Prisma may not export the type in some setups
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // TODO: Migrate projects to Supabase
+  return NextResponse.json({ error: 'Projects API not yet migrated to Supabase' }, { status: 501 })
+  
+  /*
   try {
     const project = await prisma.project.findUnique({
       where: { id: params.id },
@@ -79,4 +81,5 @@ export async function GET(
       { status: 500 }
     )
   }
+  */
 }

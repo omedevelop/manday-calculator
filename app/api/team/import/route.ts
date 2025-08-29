@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { createTeamMember } from '@/lib/database'
 import { TeamMemberCSVRowSchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
@@ -169,19 +169,14 @@ export async function POST(request: NextRequest) {
     
     for (const memberData of parseResult.valid) {
       try {
-        const teamMember = await prisma.teamMember.create({
-          data: {
-            name: memberData.name,
-            roleId: null, // Will be set if role exists
-            roleName: memberData.roleName,
-            level: memberData.level,
-            defaultRatePerDay: memberData.defaultRatePerDay,
-            notes: memberData.notes || null,
-            status: memberData.status,
-          },
-          include: {
-            role: true,
-          },
+        const teamMember = await createTeamMember({
+          name: memberData.name,
+          roleId: null, // Will be set if role exists
+          roleName: memberData.roleName,
+          level: memberData.level,
+          defaultRatePerDay: memberData.defaultRatePerDay,
+          notes: memberData.notes || null,
+          status: memberData.status,
         })
         
         created.push(teamMember)

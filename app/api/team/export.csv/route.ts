@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getTeamMembers } from '@/lib/database'
 import { TeamQuerySchema } from '@/lib/validators/team'
 import { ZodError } from 'zod'
 
@@ -74,13 +74,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all matching team members
-    const teamMembers = await prisma.teamMember.findMany({
-      where,
-      include: {
-        role: true,
-      },
-      orderBy,
+    const result = await getTeamMembers({
+      search: search,
+      status: status,
+      roleId: roleId,
+      level: level,
+      page: 1,
+      size: 10000, // Get all for export
+      sort: sort
     })
+    const teamMembers = result.data
 
     // Create CSV content
     let csvContent = ''
@@ -103,7 +106,7 @@ export async function GET(request: NextRequest) {
         member.level,
         member.defaultRatePerDay.toString(),
         member.notes || '',
-        member.status
+        member.status || 'ACTIVE'
       ])
     }
 

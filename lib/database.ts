@@ -25,7 +25,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, 
 // Client-side Supabase for frontend use
 export function createClientSupabase() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  return createClient<Database>(supabaseUrl!, supabaseAnonKey)
 }
 
 // Type definitions for better TypeScript support

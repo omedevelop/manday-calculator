@@ -103,7 +103,7 @@ export function TeamMemberTable({
         <Checkbox
           id="realtime"
           checked={realtimeEnabled}
-          onCheckedChange={setRealtimeEnabled}
+          onCheckedChange={(checked) => setRealtimeEnabled(!!checked)}
         />
         <label htmlFor="realtime" className="text-sm">
           Enable real-time updates
@@ -122,7 +122,7 @@ export function TeamMemberTable({
             <TableHead className="w-12">
               <Checkbox
                 checked={selectedMembers.size === teamMembers.length && teamMembers.length > 0}
-                onCheckedChange={onSelectAll}
+                onCheckedChange={(checked) => onSelectAll(!!checked)}
               />
             </TableHead>
             <SortableHeader field="name">Name</SortableHeader>
@@ -140,7 +140,7 @@ export function TeamMemberTable({
               <TableCell>
                 <Checkbox
                   checked={selectedMembers.has(member.id)}
-                  onCheckedChange={(checked) => onSelectMember(member.id, checked)}
+                  onCheckedChange={(checked) => onSelectMember(member.id, !!checked)}
                 />
               </TableCell>
               <TableCell className="font-medium">{member.name}</TableCell>

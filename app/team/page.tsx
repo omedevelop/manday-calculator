@@ -451,7 +451,7 @@ export default function TeamPage() {
                     <TableHead className="w-12">
                       <Checkbox
                         checked={selectedMembers.size === teamMembers.length && teamMembers.length > 0}
-                        onCheckedChange={handleSelectAll}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
                       />
                     </TableHead>
                     <SortableHeader field="name">Name</SortableHeader>
@@ -469,7 +469,7 @@ export default function TeamPage() {
                       <TableCell>
                         <Checkbox
                           checked={selectedMembers.has(member.id)}
-                          onCheckedChange={(checked) => handleSelectMember(member.id, checked)}
+                          onCheckedChange={(checked) => handleSelectMember(member.id, !!checked)}
                         />
                       </TableCell>
                       <TableCell className="font-medium">{member.name}</TableCell>
