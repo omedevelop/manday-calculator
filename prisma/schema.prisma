@@ -26,7 +26,7 @@ model RateCardRole {
 model RateCardTier {
   id           String       @id @default(cuid())
   roleId       String
-  level        RoleLevel
+  level        Level
   pricePerDay  Int
   active       Boolean      @default(true)
   createdAt    DateTime     @default(now())
@@ -42,16 +42,19 @@ model TeamMember {
   id                String       @id @default(cuid())
   name              String
   roleId            String?
-  level             RoleLevel?
+  roleName          String
+  level             Level
   defaultRatePerDay Int
   notes             String?
   status            MemberStatus @default(ACTIVE)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  role RateCardRole? @relation(fields: [roleId], references: [id])
+  role RateCardRole? @relation(fields: [roleId], references: [id], onDelete: SetNull)
   projectPeople ProjectPerson[]
 
+  @@index([status, name])
+  @@index([roleName, level])
   @@map("team_members")
 }
 
@@ -154,6 +157,12 @@ model ProjectSummary {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_summaries")
+}
+
+enum Level {
+  TEAM_LEAD
+  SENIOR
+  JUNIOR
 }
 
 enum RoleLevel {
